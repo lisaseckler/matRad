@@ -5,7 +5,8 @@ load 'TG119.mat'
 
 % changing alphaX
 cst{2,5}.alphaX = 0.5;
-cst{1,6}{1,1} = DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30);
+%cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+%cst{2,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,120));
 
 % 
 % meta information for treatment plan (1) 
@@ -99,27 +100,29 @@ stf = matRad_stfWrapper(ct,cst,plnJO);
 % Dij Calculation
 dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij);
+dij = matRad_calcDirtyDose(2,dij,pln);
+% mLETDose sumed up
+%dij = matRad_calcmLETDose(dij,pln);
 % Fluence optimization 
 resultGUI = matRad_fluenceOptimizationJO(dij,cst,plnJO);
 
 %% Visualization
-slice = 59;
-
-photon_plan = resultGUI{2};
-proton_plan = resultGUI{1};
-totalPlan = pln(1).numOfFractions.*proton_plan.(quantityOpt) + pln(2).numOfFractions.*photon_plan.(quantityOpt);
-
-f = figure;
-subplot(1,3,1);
-    imagesc(proton_plan.(quantityOpt)(:,:,slice));
-    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-    title('Proton Plan');
-subplot(1,3,2);
-    imagesc(photon_plan.(quantityOpt)(:,:,slice));
-    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-    title('Photon Plan');
-subplot(1,3,3);
-    imagesc(totalPlan(:,:,slice));
-    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-    title('Total Plan');
+% slice = 59;
+% 
+% photon_plan = resultGUI{2};
+% proton_plan = resultGUI{1};
+% totalPlan = pln(1).numOfFractions.*proton_plan.(quantityOpt) + pln(2).numOfFractions.*photon_plan.(quantityOpt);
+% 
+% f = figure;
+% subplot(1,3,1);
+%     imagesc(proton_plan.(quantityOpt)(:,:,slice));
+%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+%     title('Proton Plan');
+% subplot(1,3,2);
+%     imagesc(photon_plan.(quantityOpt)(:,:,slice));
+%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+%     title('Photon Plan');
+% subplot(1,3,3);
+%     imagesc(totalPlan(:,:,slice));
+%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+%     title('Total Plan');

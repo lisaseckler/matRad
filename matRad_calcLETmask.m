@@ -27,7 +27,8 @@ LETmaskClean = {};
 for k = 1:dij.numOfModalities
     
     if ~isfield(dij.original_Dijs{1,k},'mLETDose')
-        dij.original_Dijs{1,k}.mLETDose{1} = zeros(size(dij.original_Dijs{1,k}.physicalDose{1}));
+        %dij.original_Dijs{1,k}.mLETDose{1} = zeros(size(dij.original_Dijs{1,k}.physicalDose{1}));
+        dij.original_Dijs{1,k}.mLETDose{1} = ones(size(dij.original_Dijs{1,k}.physicalDose{1})) * 0.6;
     end
 
     [i,j,v] = find(dij.original_Dijs{1,k}.physicalDose{1});

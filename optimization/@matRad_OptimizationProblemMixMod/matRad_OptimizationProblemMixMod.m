@@ -31,11 +31,15 @@ classdef matRad_OptimizationProblemMixMod < handle
         minimumW = NaN;
         maximumW = NaN;
         nFractions;
+        dirtyDoseBP
+        mLETDoseBP
     end
     
     methods
         function obj = matRad_OptimizationProblemMixMod(backProjection)
             obj.BP = backProjection;
+            obj.dirtyDoseBP = [];
+            obj.mLETDoseBP = [];
         end       
         
         %Objective function declaration
