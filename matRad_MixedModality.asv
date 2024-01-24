@@ -5,7 +5,6 @@ load 'TG119.mat'
 
 % changing alphaX
 cst{2,5}.alphaX = 0.5;
-cst{1,6}{1,1} = DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30);
 
 % 
 % meta information for treatment plan (1) 
@@ -99,7 +98,7 @@ stf = matRad_stfWrapper(ct,cst,plnJO);
 % Dij Calculation
 dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij);
+dij = ma
 % Fluence optimization 
 resultGUI = matRad_fluenceOptimizationJO(dij,cst,plnJO);
 

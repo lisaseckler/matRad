@@ -339,6 +339,17 @@ if isfield(pln,'propOpt') && isfield(pln.propOpt,'useLogSumExpForRobOpt')
     optiProb.useLogSumExpForRobOpt = pln.propOpt.useLogSumExpForRobOpt;
 end
 
+rowCst = size(cst);
+for i = 1 : rowCst(1,1)
+    num = size(cst{i,6});
+    for j = 1 : num(1,2)
+        if isa(cst{i,6}{j},'DirtyDoseObjectives.matRad_DirtyDoseObjective')
+            optiProb.dirtyDoseBP = matRad_DirtyDoseProjection;
+        end
+        
+    end
+end
+
 %Get Bounds
 
 if ~isfield(pln.propOpt,'boundMU')

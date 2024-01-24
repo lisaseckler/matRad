@@ -112,7 +112,7 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
                 wBeam = (resultGUI.w .* beamInfo(i).logIx);
 
                 % consider biological optimization
-                ix = dij.bx(:,scenNum)~=0 & resultGUI.(['physicalDose', beamInfo(i).suffix])(:) > 0;
+                ix =  resultGUI.(['physicalDose', beamInfo(i).suffix])(:) > 0;
 
                 % Calculate effect from alpha- and sqrtBetaDose
                 resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])       = full(dij.(['mAlphaDose' RBE_model{j}]){scenNum} * wBeam + (dij.(['mSqrtBetaDose' RBE_model{j}]){scenNum} * wBeam).^2);

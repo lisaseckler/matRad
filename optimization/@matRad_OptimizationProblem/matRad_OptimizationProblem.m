@@ -30,11 +30,14 @@ classdef matRad_OptimizationProblem < handle
 
         minimumW = NaN;
         maximumW = NaN;
+
+        dirtyDoseBP
     end
     
     methods
         function obj = matRad_OptimizationProblem(backProjection)
             obj.BP = backProjection;
+            obj.dirtyDoseBP = [];
         end       
         
         %Objective function declaration
