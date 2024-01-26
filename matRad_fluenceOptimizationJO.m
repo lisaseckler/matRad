@@ -349,6 +349,7 @@ for i = 1 : rowCst(1,1)
          if isa(cst{i,6}{j},'mLETDoseObjectives.matRad_mLETDoseObjective')
             optiProb.mLETDoseBP = matRad_mLETDoseProjection;
         end
+        
     end
 end
 

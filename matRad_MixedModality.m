@@ -51,7 +51,7 @@ pln(1).multScen = matRad_multScen(ct,scenGenType);
 % 
 % meta information for treatment plan (2) 
 pln(2).numOfFractions  = 25;
-pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
+pln(2).radiationMode   = 'carbon';           % either photons / protons / helium / carbon
 pln(2).machine         = 'Generic';
 
 % beam geometry settings
@@ -105,7 +105,7 @@ dij = matRad_calcDirtyDose(2,dij,pln);
 %dij = matRad_calcmLETDose(dij,pln);
 % Fluence optimization 
 resultGUI = matRad_fluenceOptimizationJO(dij,cst,plnJO);
-
+resultGUI = matRad_calcResultGUIstruct(resultGUI);
 %% Visualization
 % slice = 59;
 % 
