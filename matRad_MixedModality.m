@@ -1,11 +1,11 @@
 matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
-load 'TG119.mat'
+load 'Circle2Phantom.mat'
 
 % changing alphaX
 cst{2,5}.alphaX = 0.5;
-%cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
 %cst{2,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,120));
 
 % 
