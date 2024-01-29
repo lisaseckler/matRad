@@ -587,6 +587,13 @@ classdef matRad_OptimizationWidget < matRad_Widget
                 if  (isfield(currentObj,'penalty') || isa(currentObj,'DoseObjectives.matRad_DoseObjective')) &&  isa(newObj,'DoseObjectives.matRad_DoseObjective')
                     newObj.penalty = currentObj.penalty;
                 end
+                if  (isfield(currentObj,'penalty') || isa(currentObj,'DirtyDoseObjectives.matRad_DirtyDoseObjective')) &&  isa(newObj,'DirtyDoseObjectives.matRad_DirtyDoseObjective')
+                    newObj.penalty = currentObj.penalty;
+                end
+                if  (isfield(currentObj,'penalty') || isa(currentObj,'mLETDoseObjectives.matRad_mLETDoseObjective')) &&  isa(newObj,'mLETDoseObjectives.matRad_mLETDoseObjective')
+                    newObj.penalty = currentObj.penalty;
+                end
+
                 
                 cst{ix(1),6}{ix(2)} = struct(newObj);
                 

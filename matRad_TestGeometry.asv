@@ -24,15 +24,15 @@ builder = matRad_PhantomBuilder(ctDim,ctResolution,1);
 
 %define objectives for the VOI
 
-objective1 = struct(DoseObjectives.matRad_SquaredDeviation(800,45));
-objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+objective1 = struct(DoseObjectives.matRad_SquaredDeviation(800,60));
+objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(200,0));
 objective3 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0)); 
 objective4 = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
 
 builder.addSphericalTarget('PTV',10,'offset',[-5 -5 0],'objectives',objective1,'HU',0);
 builder.addSphericalOAR('OAR1',12,'offset',[19 -7 0],'objectives',objective3);
 builder.addSphericalOAR('OAR2',7,'offset',[-5 7 0],'objectives',objective2);
-builder.addSphericalOAR('OAR3',7,'offset',[-5 -16 0],'objectives',objective2);
+builder.addSphericalOAR('OAR3',7,'offset',[-5])
 builder.addBoxOAR('Body',[60,70,60],'objectives',objective4);
 
 % This adds two Box OAR and one Spherical Target in the middle

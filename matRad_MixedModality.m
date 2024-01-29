@@ -1,14 +1,24 @@
 matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
-load 'Circle2Phantom.mat'
+matRad_cfg.propOpt.defaultAccChangeTol = 1e-06;
+load 'TG119.mat'
 
 % changing alphaX
 cst{2,5}.alphaX = 0.5;
-cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
-%cst{2,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,120));
+% cst{1,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(1000,30));
+% cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
+% cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+% cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+% cst{5,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
+cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+%cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+% cst{2,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,120));
 
-% 
+%% add margin
+
+
+%%
 % meta information for treatment plan (1) 
 pln(1).numOfFractions  = 5;
 pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
@@ -16,7 +26,7 @@ pln(1).machine         = 'Generic';
 
 % beam geometry settings
 pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [0]; % [?] ;
+pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
 pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
 pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
 pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
@@ -36,7 +46,7 @@ pln(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
-modelName    = 'MCN';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
+modelName    = 'constRBE';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
                                    % MCN: McNamara-variable RBE model for protons  % WED: Wedenberg-variable RBE model for protons 
                                    % LEM: Local Effect Model for carbon ions
 
@@ -51,12 +61,12 @@ pln(1).multScen = matRad_multScen(ct,scenGenType);
 % 
 % meta information for treatment plan (2) 
 pln(2).numOfFractions  = 25;
-pln(2).radiationMode   = 'carbon';           % either photons / protons / helium / carbon
+pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
 pln(2).machine         = 'Generic';
 
 % beam geometry settings
 pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(2).propStf.gantryAngles    = [0:90:359]; % [?] ;
+pln(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
 pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
 pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
 pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
@@ -104,8 +114,11 @@ dij = matRad_calcDirtyDose(2,dij,pln);
 % mLETDose sumed up
 %dij = matRad_calcmLETDose(dij,pln);
 % Fluence optimization 
-resultGUI = matRad_fluenceOptimizationJO(dij,cst,plnJO);
-resultGUI = matRad_calcResultGUIstruct(resultGUI);
+result = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+resultGUI = matRad_calcResultGUIstruct(result);
+% pln_original = pln;
+% pln = pln(2);
+% matRadGUI
 %% Visualization
 % slice = 59;
 % 

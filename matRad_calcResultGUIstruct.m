@@ -92,5 +92,13 @@ elseif ~isfield(resultGUI_cell{1,1},'physicalDose') && isfield(resultGUI_cell{1,
     resultGUI.physicalDose2 = resultGUI_cell{1,2}.physicalDose;
 end
 
+% if isfield(resultGUI_cell{1,1},'mLETDose') && isfield(resultGUI_cell{1,2},'mLETDose')
+%     resultGUI.physicalDose = resultGUI_cell{1,1}.physicalDose + resultGUI_cell{1,2}.physicalDose;
+% elseif isfield(resultGUI_cell{1,1},'mLETDose') && ~isfield(resultGUI_cell{1,2},'mLETDose')
+%     resultGUI.physicalDose1 = resultGUI_cell{1,1}.physicalDose;
+% elseif ~isfield(resultGUI_cell{1,1},'mLETDose') && isfield(resultGUI_cell{1,2},'mLETDose')
+%     resultGUI.physicalDose2 = resultGUI_cell{1,2}.physicalDose;
+% end
+
 
 end

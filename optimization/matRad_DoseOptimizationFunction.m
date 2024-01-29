@@ -62,17 +62,17 @@ classdef (Abstract) matRad_DoseOptimizationFunction
                 objParams = [];
             end
 
-            if cellfun(@(c) isequal('dose',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('dose',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('dose',c),obj.parameterTypes);
                 objParams = [obj.parameters{ix}];
             end
 
-            if cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes);
                 objParams = [obj.parameters{ix}];
             end
 
-            if cellfun(@(c) isequal('mLETd',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('mLETd',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('mLETd',c),obj.parameterTypes);
                 objParams = [obj.parameters{ix}];
             end
@@ -82,17 +82,17 @@ classdef (Abstract) matRad_DoseOptimizationFunction
         function obj = setDoseParameters(obj,objParams)
             % set only the dose related parameters.
 
-            if cellfun(@(c) isequal('dose',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('dose',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('dose',c),obj.parameterTypes);
                 obj.parameters(ix) = num2cell(objParams);
             end
 
-            if cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('dirtyDose',c),obj.parameterTypes);
                 obj.parameters(ix) = num2cell(objParams);
             end
 
-            if cellfun(@(c) isequal('mLETd',c),obj.parameterTypes)
+            if any(cellfun(@(c) isequal('mLETd',c),obj.parameterTypes))
                 ix = cellfun(@(c) isequal('mLETd',c),obj.parameterTypes);
                 obj.parameters(ix) = num2cell(objParams);
             end

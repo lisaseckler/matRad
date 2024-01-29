@@ -103,13 +103,13 @@ if isfield(dij,'dirtyDoseThreshold')
     end
 end
 
-%% clean dose
-% consider clean dose
-if isfield(dij,'dirtyDoseThreshold')
-    for i = 1:length(beamInfo)
-        resultGUI.(['cleanDose', beamInfo(i).suffix]) = reshape((dij.cleanDose*(resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
-    end
-end
+% %% clean dose
+% % consider clean dose
+% if isfield(dij,'dirtyDoseThreshold')
+%     for i = 1:length(beamInfo)
+%         resultGUI.(['cleanDose', beamInfo(i).suffix]) = reshape((dij.cleanDose*(resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
+%     end
+% end
 
 %% RBE weighted dose
 % consider RBE for protons and skip varRBE calculation
