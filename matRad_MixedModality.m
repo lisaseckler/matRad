@@ -2,7 +2,7 @@ matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
 matRad_cfg.propOpt.defaultAccChangeTol = 1e-06;
-load 'TG119.mat'
+load 'NEW-BOXPHANTOM-Overlap.mat'
 
 % changing alphaX
 cst{2,5}.alphaX = 0.5;
@@ -11,12 +11,27 @@ cst{2,5}.alphaX = 0.5;
 % cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 % cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 % cst{5,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
-cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
-%cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
-% cst{2,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,120));
+cst{1,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+%cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+%cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,120));
 
 %% add margin
-
+% cube = zeros(ct.cubeDim);
+% cube(cst{1,4}{1}) = 1;
+% vResolution = ct.resolution;
+% vMargin = [];
+% vMargin.x = 5;
+% vMargin.y = 5;
+% vMargin.z = 5;
+% mVOIEnlarged = matRad_addMargin(cube,cst,vResolution,vMargin,1);
+% 
+% cst{4,1}    = 3;
+% cst{4,2}    = 'Margin';
+% cst{4,3}    = 'OAR';
+% cst{4,4}{1} = find(mVOIEnlarged);
+% cst{4,5}    = cst{1,5};
+% 
+% cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(300,40)); 
 
 %%
 % meta information for treatment plan (1) 
@@ -26,7 +41,8 @@ pln(1).machine         = 'Generic';
 
 % beam geometry settings
 pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
+% pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
+pln(1).propStf.gantryAngles    = [90];
 pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
 pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
 pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
@@ -119,6 +135,14 @@ resultGUI = matRad_calcResultGUIstruct(result);
 % pln_original = pln;
 % pln = pln(2);
 % matRadGUI
+
+%% DVH calculation
+
+cube = resultGUI.dirtyDose(:);
+DVH = matRad_calcDVH(cst,cube);
+
+ShowDVH = matRad_showDVH(DVH,cst);
+
 %% Visualization
 % slice = 59;
 % 

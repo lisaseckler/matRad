@@ -2,10 +2,12 @@
 
 %% set matRad runtime configuration
 matRad_rc; %If this throws an error, run it from the parent directory first to set the paths
+%%
+load("BOXPHANTOM.mat")
 
 %% Create a CT image series
 
-ctDim = [80,80,80]; % x,y,z dimensions
+ctDim = [ct.cubeDim(1),ct.cubeDim(2),ct.cubeDim(3)]; % x,y,z dimensions
 ctResolution = [3,3,3]; % x,y,z the same here!
 
 % This uses the phantombuilder class, which helps to easily implement a 
@@ -44,11 +46,34 @@ builder.addBoxOAR('Body',[60,70,60],'objectives',objective4);
 %(Optional) The objectives can already be set here, however this can also
 %be done later on
 %(Optional) The HU of the VOI can be set (normal value: 0 (water)) 
+%% Add Boxphantom
+objective1 = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 
+builder.addBoxOAR('OAR2',[10,20,80],'offset',[-12,0,0],'objectives',objective1);
+builder.addBoxOAR('OAR3',[20,10,80],'offset',[0,-16,0],'objectives',objective2);
+% builder.addBoxOAR('OAR3',[40,-40,40])
 
 %% Get the ct and cst (stored as properties of the phantomBuilder class)
 
-[ct,cst] = builder.getctcst();
+[ct2,cst2] = builder.getctcst();
+
+%% Add to Boxphantom
+cst{3,1}    = 2;
+cst{3,2}    = cst2{1,2};
+cst{3,3}    = 'OAR';
+cst{3,4}{1} = cst2{1,4}{1};
+cst{3,5}    = cst2{1,5};
+
+cst{3,6}{1} = cst2{1,6}{1}; 
+
+cst{4,1}    = 3;
+cst{4,2}    = cst2{2,2};
+cst{4,3}    = 'OAR';
+cst{4,4}{1} = cst2{2,4}{1};
+cst{4,5}    = cst2{2,5};
+
+cst{4,6}{1} = cst2{2,6}{1}; 
 
 %% Treatment Plan
 
