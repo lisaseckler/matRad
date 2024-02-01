@@ -138,10 +138,6 @@ resultGUI = matRad_calcResultGUIstruct(result);
 
 %% DVH calculation
 
-cube = resultGUI.dirtyDose(:);
-DVH = matRad_calcDVH(cst,cube);
-
-ShowDVH = matRad_showDVH(DVH,cst);
 
 %% Visualization
 % slice = 59;
