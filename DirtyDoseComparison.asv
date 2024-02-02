@@ -2,41 +2,42 @@ matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
 matRad_cfg.propOpt.defaultAccChangeTol = 1e-06;
-load BOXPHANTOM.mat
+load NEW-BOXPHANTOM-Overlap.mat
 
 % changing alphaX
-cst{2,5}.alphaX = 0.1;
+%cst{2,5}.alphaX = 0.1;
 
+cst{1,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(800,60));
 %cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
-cst_first = cst;
+%cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosing(100,0));
 
 %%
 % meta information for treatment plan (1) 
-plnN(1).numOfFractions  = 5;
-plnN(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
-plnN(1).machine         = 'Generic';
+pln(1).numOfFractions  = 5;
+pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
+pln(1).machine         = 'Generic';
 
 % beam geometry settings
-plnN(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
 % pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
-plnN(1).propStf.gantryAngles    = [90];
-plnN(1).propStf.couchAngles     = zeros(numel(plnN(1).propStf.gantryAngles),1); % [?] ; 
-plnN(1).propStf.numOfBeams      = numel(plnN(1).propStf.gantryAngles);
-plnN(1).propStf.isoCenter       = ones(plnN(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln(1).propStf.gantryAngles    = [90];
+pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
+pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
+pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-plnN(1).propDoseCalc.calcLET = 1;
+pln(1).propDoseCalc.calcLET = 1;
 
-plnN(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-plnN(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-plnN(1).propOpt.spatioTemp      = 0;
-plnN(1).propOpt.STscenarios     = 2;
+pln(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln(1).propOpt.spatioTemp      = 0;
+pln(1).propOpt.STscenarios     = 2;
 %pln(1).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-plnN(1).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
-plnN(1).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
-plnN(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
@@ -48,33 +49,33 @@ modelName    = 'constRBE';             % none: for photons, protons, carbon     
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-plnN(1).bioParam = matRad_bioModel(pln(1).radiationMode,quantityOpt, modelName);
+pln(1).bioParam = matRad_bioModel(pln(1).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-plnN(1).multScen = matRad_multScen(ct,scenGenType);
+pln(1).multScen = matRad_multScen(ct,scenGenType);
 % 
 % meta information for treatment plan (2) 
-plnN(2).numOfFractions  = 25;
-plnN(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
-plnN(2).machine         = 'Generic';
+pln(2).numOfFractions  = 25;
+pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
+pln(2).machine         = 'Generic';
 
 % beam geometry settings
-plnN(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-plnN(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
-plnN(2).propStf.couchAngles     = zeros(numel(plnN(2).propStf.gantryAngles),1);  % [?] ; 
-plnN(2).propStf.numOfBeams      = numel(plnN(2).propStf.gantryAngles);
-plnN(2).propStf.isoCenter       = ones(plnN(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
+pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
+pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
+pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-plnN(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-plnN(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-plnN(2).propOpt.spatioTemp      = 0;
-plnN(2).propOpt.STscenarios     = 5;
+pln(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln(2).propOpt.spatioTemp      = 0;
+pln(2).propOpt.STscenarios     = 5;
 %pln(2).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-plnN(2).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
-plnN(2).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
-plnN(2).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(2).propDoseCalc.doseGrid.resolution = ct.resolution;
 
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
@@ -86,10 +87,10 @@ modelName    = 'none';             % none: for photons, protons, carbon         
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-plnN(2).bioParam = matRad_bioModel(plnN(2).radiationMode,quantityOpt, modelName);
+pln(2).bioParam = matRad_bioModel(pln(2).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-plnN(2).multScen = matRad_multScen(ct,scenGenType);
+pln(2).multScen = matRad_multScen(ct,scenGenType);
 
 % prepping cst 
 % placing alpha/beta ratios in cst{:,6},
@@ -98,53 +99,55 @@ sparecst = 0;
 
 cst = matRad_prepCst(cst, sparecst);
 % Plan Wrapper
-plnJON = matRad_plnWrapper(plnN);
+plnJO = matRad_plnWrapper(pln);
 % Stf Wrapper
-stfN = matRad_stfWrapper(ct,cst,plnJON);
+stf = matRad_stfWrapper(ct,cst,plnJO);
 % Dij Calculation
-dijN = matRad_calcCombiDose(ct,stfN,plnJON,cst,false);
+dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
-dijN = matRad_calcDirtyDose(2,dijN,plnN);
-resultN = matRad_fluenceOptimizationJO(dijN,cst,plnJON);
-resultGUI1 = matRad_calcResultGUIstruct(result);
-result_ = result;
-dij_first = dij;
-resultGUI_first = result{1,1};
-%% New Case
-clear("cst","ct");
+dij = matRad_calcDirtyDose(2,dij,pln);
+result = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+resultGUI_1 = matRad_calcResultGUIstruct(result);
+%result_first = result;
+%dij_first = dij;
+resultGUI = result{1,1};
+save("MixedModalities_withoutDD.mat","-v7.3")
+%% with DD in OAR2
+clear
 load 'NEW-BOXPHANTOM-Overlap.mat'
 
 % changing alphaX
-cst{2,5}.alphaX = 0.1;
+%cst{2,5}.alphaX = 0.1;
 
-cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+cst{1,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(800,60));
 cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
 
 % meta information for treatment plan (1) 
-pln2D(1).numOfFractions  = 5;
-pln2D(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
-pln2D(1).machine         = 'Generic';
+pln(1).numOfFractions  = 5;
+pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
+pln(1).machine         = 'Generic';
 
 % beam geometry settings
-pln2D(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
 % pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
-pln2D(1).propStf.gantryAngles    = [90];
-pln2D(1).propStf.couchAngles     = zeros(numel(pln2D(1).propStf.gantryAngles),1); % [?] ; 
-pln2D(1).propStf.numOfBeams      = numel(pln2D(1).propStf.gantryAngles);
-pln2D(1).propStf.isoCenter       = ones(pln2D(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln(1).propStf.gantryAngles    = [90];
+pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
+pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
+pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln2D(1).propDoseCalc.calcLET = 1;
+pln(1).propDoseCalc.calcLET = 1;
 
-pln2D(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln2D(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln2D(1).propOpt.spatioTemp      = 0;
-pln2D(1).propOpt.STscenarios     = 2;
+pln(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln(1).propOpt.spatioTemp      = 0;
+pln(1).propOpt.STscenarios     = 2;
 %pln(1).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln2D(1).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
-pln2D(1).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
-pln2D(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
+pln(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
@@ -156,33 +159,33 @@ modelName    = 'constRBE';             % none: for photons, protons, carbon     
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln2D(1).bioParam = matRad_bioModel(pln2D(1).radiationMode,quantityOpt, modelName);
+pln(1).bioParam = matRad_bioModel(pln(1).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln2D(1).multScen = matRad_multScen(ct,scenGenType);
+pln(1).multScen = matRad_multScen(ct,scenGenType);
 % 
 % meta information for treatment plan (2) 
-pln2D(2).numOfFractions  = 25;
-pln2D(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
-pln2D(2).machine         = 'Generic';
+pln(2).numOfFractions  = 25;
+pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
+pln(2).machine         = 'Generic';
 
 % beam geometry settings
-pln2D(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln2D(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
-pln2D(2).propStf.couchAngles     = zeros(numel(pln2D(2).propStf.gantryAngles),1);  % [?] ; 
-pln2D(2).propStf.numOfBeams      = numel(pln2D(2).propStf.gantryAngles);
-pln2D(2).propStf.isoCenter       = ones(pln2D(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
+pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
+pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
+pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln2D(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln2D(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln2D(2).propOpt.spatioTemp      = 0;
-pln2D(2).propOpt.STscenarios     = 5;
+pln(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln(2).propOpt.spatioTemp      = 0;
+pln(2).propOpt.STscenarios     = 5;
 %pln(2).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln2D(2).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
-pln2D(2).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
-pln2D(2).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.x = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.y = 8; % [mm]
+pln(2).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(2).propDoseCalc.doseGrid.resolution = ct.resolution;
 
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
@@ -194,10 +197,10 @@ modelName    = 'none';             % none: for photons, protons, carbon         
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln2D(2).bioParam = matRad_bioModel(pln2D(2).radiationMode,quantityOpt, modelName);
+pln(2).bioParam = matRad_bioModel(pln(2).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln2D(2).multScen = matRad_multScen(ct,scenGenType);
+pln(2).multScen = matRad_multScen(ct,scenGenType);
 
 % prepping cst 
 % placing alpha/beta ratios in cst{:,6},
@@ -206,30 +209,33 @@ sparecst = 0;
 
 cst = matRad_prepCst(cst, sparecst);
 % Plan Wrapper
-plnJO2D = matRad_plnWrapper(pln2D);
+plnJO = matRad_plnWrapper(pln);
 % Stf Wrapper
-stf2D = matRad_stfWrapper(ct,cst,plnJO2D);
+stf = matRad_stfWrapper(ct,cst,plnJO);
 % Dij Calculation
-dij2D = matRad_calcCombiDose(ct,stf2D,plnJO2D,cst,false);
+dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
-dij2D = matRad_calcDirtyDose(2,dij2D,pln2D);
-result2D = matRad_fluenceOptimizationJO(dij2D,cst,plnJO2D);
-resultGUI2D = matRad_calcResultGUIstruct(result2D);
-cst_secondD = cst;
-dij_secondD = dij2D;
-result_secondD = result2D;
-resultGUI_secondD = result2D{1,1};
+dij = matRad_calcDirtyDose(2,dij,pln);
+result = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+resultGUI = matRad_calcResultGUIstruct(result);
+% cst_secondD = cst;
+% dij_secondD = dij2D;
+% result_secondD = result2D;
+% resultGUI_secondD = result2D{1,1};
+
+save("MixedModalities_withDD.mat","-v7.3")
 
 %%
-clear("cst","ct");
+clear
 load 'NEW-BOXPHANTOM-Overlap.mat'
 
 % changing alphaX
-cst{2,5}.alphaX = 0.5;
+%cst{2,5}.alphaX = 0.5;
 
-cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+%cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 cst{1,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
-cst_third = cst;
+cst{3,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,120));
+%cst_third = cst;
 
 % meta information for treatment plan (1) 
 pln3(1).numOfFractions  = 5;

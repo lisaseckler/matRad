@@ -1,7 +1,8 @@
 matRad_rc
+clear
 load("NEW-BOXPHANTOM-Overlap.mat")
 
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
+cst{3,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
 cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(800,60));
 
 plnN(1).numOfFractions  = 30;
@@ -68,7 +69,7 @@ save("mix_DD2.mat","cst_N_DD","dij_N_DD","pln_N_DD","result_N_DD","stf_N_DD","-v
 
 load("NEW-BOXPHANTOM-Overlap.mat")
 
-cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,120));
+cst{3,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,120));
 cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(800,60));
 
 plnN(1).numOfFractions  = 30;
@@ -133,4 +134,45 @@ stf_N_mL = stfN;
 save("mix_mL2.mat","cst_N_mL","dij_N_mL","pln_N_mL","result_N_mL","stf_N_mL","-v7.3")
 
 %% Visualisation
+
+% cube = result_O_DD.RBExD;
+% plane = 3;
+% slice = 80;
+% doseWindow = [0 max(cube(:))];
+% 
+% figure,
+% subplot(2,2,1)
+% matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+% title('Old branch DD, RBExD')
+% zoom(1.3)
+% 
+% cube = result_O_mL.RBExD;
+% plane = 3;
+% slice = 80;
+% doseWindow = [0 max(cube(:))];
+% 
+% subplot(2,2,2)
+% matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+% title('Old branch mL, RBExD')
+% zoom(1.3)
+% 
+% cube = result_N_DD{1}.RBExD;
+% plane = 3;
+% slice = 80;
+% doseWindow = [0 max(cube(:))];
+% 
+% subplot(2,2,3)
+% matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+% title('New branch DD, RBExD')
+% zoom(1.3)
+% 
+% cube = result_N_mL{1}.RBExD;
+% plane = 3;
+% slice = 80;
+% doseWindow = [0 max(cube(:))];
+% 
+% subplot(2,2,4)
+% matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+% title('New branch mL, RBExD')
+% zoom(1.3)
 
