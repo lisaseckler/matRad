@@ -32,28 +32,30 @@ else
         rad = ["protons","photons","carbon","helium"];
 
         % for adding up the dirty dose
-        if pln(2).radiationMode == rad(1,2)
-            DirtySize = zeros(size(dij.original_Dijs{1,m-1}.physicalDose{1}));
-            LETDirty_Size = size(dij.original_Dijs{1,2}.dirtyDose);
-            row = LETDirty_Size(1,m-1);
-            column = LETDirty_Size(1,m);
-            DirtySize(1:row,1:column) = dij.original_Dijs{1,2}.dirtyDose;
-            photonDD = sparse(DirtySize);
-            dij.dirtyDose = dij.original_Dijs{1,1}.dirtyDose + photonDD;
-            % DirtySize(1:row,1:column) = dij.original_Dijs{1,2}.cleanDose;
-            % photonCD = sparse(DirtySize);
-            % dij.cleanDose = dij.original_Dijs{1,1}.cleanDose + photonCD;
-        elseif pln(2).radiationMode == rad(1,3)
-            DirtySize = zeros(size(dij.original_Dijs{1,m}.physicalDose{1}));
-            LETDirty_Size = size(dij.original_Dijs{1,1}.dirtyDose);
-            row = LETDirty_Size(1,m-1);
-            column = LETDirty_Size(1,m);
-            DirtySize(1:row,1:column) = dij.original_Dijs{1,1}.dirtyDose;
-            protonDD = sparse(DirtySize);
-            dij.dirtyDose = dij.original_Dijs{1,2}.dirtyDose + protonDD;
-            % DirtySize(1:row,1:column) = dij.original_Dijs{1,1}.cleanDose;
-            % protonCD = sparse(DirtySize);
-            % dij.cleanDose = dij.original_Dijs{1,2}.cleanDose + protonCD;
+        if dij.numOfModalities == 2
+            if pln(2).radiationMode == rad(1,2)
+                DirtySize = zeros(size(dij.original_Dijs{1,m-1}.physicalDose{1}));
+                LETDirty_Size = size(dij.original_Dijs{1,2}.dirtyDose);
+                row = LETDirty_Size(1,m-1);
+                column = LETDirty_Size(1,m);
+                DirtySize(1:row,1:column) = dij.original_Dijs{1,2}.dirtyDose;
+                photonDD = sparse(DirtySize);
+                dij.dirtyDose = dij.original_Dijs{1,1}.dirtyDose + photonDD;
+                % DirtySize(1:row,1:column) = dij.original_Dijs{1,2}.cleanDose;
+                % photonCD = sparse(DirtySize);
+                % dij.cleanDose = dij.original_Dijs{1,1}.cleanDose + photonCD;
+            elseif pln(2).radiationMode == rad(1,3)
+                DirtySize = zeros(size(dij.original_Dijs{1,m}.physicalDose{1}));
+                LETDirty_Size = size(dij.original_Dijs{1,1}.dirtyDose);
+                row = LETDirty_Size(1,m-1);
+                column = LETDirty_Size(1,m);
+                DirtySize(1:row,1:column) = dij.original_Dijs{1,1}.dirtyDose;
+                protonDD = sparse(DirtySize);
+                dij.dirtyDose = dij.original_Dijs{1,2}.dirtyDose + protonDD;
+                % DirtySize(1:row,1:column) = dij.original_Dijs{1,1}.cleanDose;
+                % protonCD = sparse(DirtySize);
+                % dij.cleanDose = dij.original_Dijs{1,2}.cleanDose + protonCD;
+            end
         end
 
     end

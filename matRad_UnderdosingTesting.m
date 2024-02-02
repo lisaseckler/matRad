@@ -91,22 +91,24 @@ RBExD_P10_L4 = matRad_calcQualityIndicators(cst,pln,resultGUI_p10_L4.RBExD);
 LET_P10_L4 = matRad_calcQualityIndicators(cst,pln,resultGUI_p10_L4.LETd);
 
 %%
-cube = resultGUI_O5.dirtyDose;
+cube = result_O_DD{1,1}.RBExD;
 plane = 3;
 slice = 80;
 doseWindow = [0 max(cube(:))];
 
 figure,
+subplot(2,2,1)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Old calculation')
+title('Old branch, RBExD')
 zoom(1.3)
 
-cube = resultGUI_p10_L4.RBExD;
+cube = result_O_mL;
 plane = 3;
 slice = 80;
 doseWindow = [0 max(cube(:))];
 
 figure,
+subplot(2,2,2)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
 title('P10 L4 plan')
 zoom(1.3)

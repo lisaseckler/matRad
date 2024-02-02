@@ -43,46 +43,46 @@ cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,3
 
 
 %% Define radiation modality
-plnO.radiationMode = 'protons';        
-plnO.machine       = 'Generic';
+plnO5.radiationMode = 'protons';        
+plnO5.machine       = 'Generic';
 
 % Calculate LET
-plnO.propDoseCalc.calcLET = 1;
+plnO5.propDoseCalc.calcLET = 1;
 
 % Set some beam parameters
-plnO.numOfFractions        = 30;
-plnO.propStf.gantryAngles  = [90 270];
-pln.propStf.couchAngles   = zeros(numel(pln(1).propStf.gantryAngles),1);
-plnO.propStf.bixelWidth    = 5;
-plnO.propStf.numOfBeams    = numel(plnO.propStf.gantryAngles);
-plnO.propStf.isoCenter     = ones(plnO.propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
-plnO.propOpt.runDAO        = 0;
-plnO.propSeq.runSequencing = 0;
+plnO5.numOfFractions        = 5;
+plnO5.propStf.gantryAngles  = [90];
+plnO5.propStf.couchAngles   = zeros(numel(plnO5.propStf.gantryAngles),1);
+plnO5.propStf.bixelWidth    = 5;
+plnO5.propStf.numOfBeams    = numel(plnO5.propStf.gantryAngles);
+plnO5.propStf.isoCenter     = ones(plnO5.propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+plnO5.propOpt.runDAO        = 0;
+plnO5.propSeq.runSequencing = 0;
 
 
 % Define the flavor of optimization
 quantityOpt   = 'RBExD'; 
 modelName     = 'constRBE'; %MCN for protons, HEL for helium, LEM for carbon
 
-plnO.bioParam = matRad_bioModel(plnO.radiationMode,quantityOpt, modelName);
-plnO.multScen = matRad_multScen(ct,'nomScen');
+plnO5.bioParam = matRad_bioModel(plnO5.radiationMode,quantityOpt, modelName);
+plnO5.multScen = matRad_multScen(ct,'nomScen');
 
 % dose calculation settings
-plnO.propDoseCalc.doseGrid.resolution.x = 6; % [mm]
-plnO.propDoseCalc.doseGrid.resolution.y = 6; % [mm]
-plnO.propDoseCalc.doseGrid.resolution.z = 6; % [mm]
+plnO5.propDoseCalc.doseGrid.resolution.x = 6; % [mm]
+plnO5.propDoseCalc.doseGrid.resolution.y = 6; % [mm]
+plnO5.propDoseCalc.doseGrid.resolution.z = 6; % [mm]
 
 % Generate Beam Geometry STF
-stfO = matRad_generateStf(ct,cst,plnO);
+stfO5 = matRad_generateStf(ct,cst,plnO5);
 
 % Dose Calculation
-dijO = matRad_calcParticleDose(ct,stfO,plnO,cst);
+dijO5 = matRad_calcParticleDose(ct,stfO5,plnO5,cst);
 
 %% it only works with a Boxphantom and a LET threshold between 2.7 and 7.6:
-dijO = matRad_calcDirtyDose(2,dijO);
+dijO5 = matRad_calcDirtyDose_O(2,dijO5);
 
 % Inverse Optimization for IMPT
-resultGUI_O = matRad_fluenceOptimization(dijO,cst,plnO);
+resultGUI_O5 = matRad_fluenceOptimization(dijO5,cst,plnO5);
 
 % resultGUIRefNew = resultGUI;
 %%
@@ -91,14 +91,14 @@ RBExD_P10_L4 = matRad_calcQualityIndicators(cst,pln,resultGUI_p10_L4.RBExD);
 LET_P10_L4 = matRad_calcQualityIndicators(cst,pln,resultGUI_p10_L4.LETd);
 
 %%
-cube = resultGUI_p70_L4.RBExD;
+cube = resultG;
 plane = 3;
 slice = 80;
 doseWindow = [0 max(cube(:))];
 
 figure,
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('P70 L4 plan')
+title('Old calculation')
 zoom(1.3)
 
 cube = resultGUI_p10_L4.RBExD;
