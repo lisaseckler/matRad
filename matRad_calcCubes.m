@@ -99,7 +99,7 @@ end
 % consider dirty dose
 if isfield(dij,'dirtyDoseThreshold')
     for i = 1:length(beamInfo)
-        resultGUI.(['dirtyDose', beamInfo(i).suffix]) = reshape((dij.dirtyDose*(resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
+        resultGUI.(['dirtyDose', beamInfo(i).suffix]) = reshape((dij.dirtyDose{1}*(resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
     end
 end
 

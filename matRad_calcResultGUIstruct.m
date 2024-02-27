@@ -5,27 +5,31 @@ resultGUI_cell = resultGUI;
 resultGUI = struct();
 
 if isfield(resultGUI_cell{1,1},'LET') && isfield(resultGUI_cell{1,2},'LET')
-    resultGUI.LET = resultGUI_cell{1,1}.LET + resultGUI_cell{1,2}.LET;
+    resultGUI.LET = resultGUI_cell{1,1}.LET * pln(1).numOfFractions + resultGUI_cell{1,2}.LET * pln(2).numOfFractions;
 elseif isfield(resultGUI_cell{1,1},'LET') && ~isfield(resultGUI_cell{1,2},'LET')
-    resultGUI.LET1 = resultGUI_cell{1,1}.LET;
+    resultGUI.LET1 = resultGUI_cell{1,1}.LET * pln(1).numOfFractions + (ones(size(resultGUI_cell{1,2}.physicalDose)) * 0.3) * pln(2).numOfFractions;
 elseif ~isfield(resultGUI_cell{1,1},'LET') && isfield(resultGUI_cell{1,2},'LET')
-    resultGUI.LET2 = resultGUI_cell{1,2}.LET;
+    resultGUI.LET2 = (ones(size(resultGUI_cell{1,1}.physicalDose)) * 0.3) * pln(1).numOfFractions + resultGUI_cell{1,2}.LET * pln(2).numOfFractions;
 end
 
 if isfield(resultGUI_cell{1,1},'RBE') && isfield(resultGUI_cell{1,2},'RBE')
-    resultGUI.RBE = resultGUI_cell{1,1}.RBE + resultGUI_cell{1,2}.RBE;
+    resultGUI.RBE = resultGUI_cell{1,1}.RBE * pln(1).numOfFractions + resultGUI_cell{1,2}.RBE * pln(2).numOfFractions;
 elseif isfield(resultGUI_cell{1,1},'RBE') && ~isfield(resultGUI_cell{1,2},'RBE')
-    resultGUI.RBE1 = resultGUI_cell{1,1}.RBE;
+    resultGUI.RBE1 = resultGUI_cell{1,1}.RBE * pln(1).numOfFractions + 1.1 * pln(2).numOfFractions;
 elseif ~isfield(resultGUI_cell{1,1},'RBE') && isfield(resultGUI_cell{1,2},'RBE')
-    resultGUI.RBE2 = resultGUI_cell{1,2}.RBE;
+    resultGUI.RBE2 = 1.1 * pln(1).numOfFractions + resultGUI_cell{1,2}.RBE * pln(2).numOfFractions;
+elseif ~isfield(resultGUI_cell{1,1},'RBE') && ~isfield(resultGUI_cell{1,2},'RBE')
+    resultGUI.RBE3 = 1.1 * pln(1).numOfFractions + 1.1 * pln(2).numOfFractions;
 end
 
 if isfield(resultGUI_cell{1,1},'RBExD') && isfield(resultGUI_cell{1,2},'RBExD')
-    resultGUI.RBExD = resultGUI_cell{1,1}.RBExD + resultGUI_cell{1,2}.RBExD;
+    resultGUI.RBExD = resultGUI_cell{1,1}.RBExD * pln(1).numOfFractions + resultGUI_cell{1,2}.RBExD * pln(2).numOfFractions;
 elseif isfield(resultGUI_cell{1,1},'RBExD') && ~isfield(resultGUI_cell{1,2},'RBExD')
-    resultGUI.RBExD1 = resultGUI_cell{1,1}.RBExD;
+    resultGUI.RBExD1 = resultGUI_cell{1,1}.RBExD * pln(1).numOfFractions + resultGUI_cell{1,2}.physicalDose * 1.1 * pln(2).numOfFractions;
 elseif ~isfield(resultGUI_cell{1,1},'RBExD') && isfield(resultGUI_cell{1,2},'RBExD')
-    resultGUI.RBExD2 = resultGUI_cell{1,2}.RBExD;
+    resultGUI.RBExD2 = resultGUI_cell{1,1}.physicalDose * 1.1 * pln(1).numOfFractions + resultGUI_cell{1,2}.RBExD;
+elseif ~isfield(resultGUI_cell{1,1},'RBExD') && ~isfield(resultGUI_cell{1,2},'RBExD')
+    resultGUI.RBExD3 = resultGUI_cell{1,1}.physicalDose * 1.1 * pln(1).numOfFractions + resultGUI_cell{1,2}.physicalDose * 1.1 * pln(2).numOfFractions;
 end
 
 if isfield(resultGUI_cell{1,1},'SqrtBetaDoseCube') && isfield(resultGUI_cell{1,2},'SqrtBetaDoseCube')
@@ -69,11 +73,11 @@ elseif ~isfield(resultGUI_cell{1,1},'cleanDose') && isfield(resultGUI_cell{1,2},
 end
 
 if isfield(resultGUI_cell{1,1},'dirtyDose') && isfield(resultGUI_cell{1,2},'dirtyDose')
-    resultGUI.dirtyDose = resultGUI_cell{1,1}.dirtyDose + resultGUI_cell{1,2}.dirtyDose;
+    resultGUI.dirtyDose = resultGUI_cell{1,1}.dirtyDose * pln(1).numOfFractions + resultGUI_cell{1,2}.dirtyDose * pln(2).numOfFractions;
 elseif isfield(resultGUI_cell{1,1},'dirtyDose') && ~isfield(resultGUI_cell{1,2},'dirtyDose')
-    resultGUI.dirtyDose1 = resultGUI_cell{1,1}.dirtyDose;
+    resultGUI.dirtyDose1 = resultGUI_cell{1,1}.dirtyDose * pln(1).numOfFractions;
 elseif ~isfield(resultGUI_cell{1,1},'dirtyDose') && isfield(resultGUI_cell{1,2},'dirtyDose')
-    resultGUI.dirtyDose2 = resultGUI_cell{1,2}.dirtyDose;
+    resultGUI.dirtyDose2 = resultGUI_cell{1,2}.dirtyDose * pln(2).numOfFractions;
 end
 
 if isfield(resultGUI_cell{1,1},'effect') && isfield(resultGUI_cell{1,2},'effect')
@@ -85,11 +89,11 @@ elseif ~isfield(resultGUI_cell{1,1},'effect') && isfield(resultGUI_cell{1,2},'ef
 end
 
 if isfield(resultGUI_cell{1,1},'physicalDose') && isfield(resultGUI_cell{1,2},'physicalDose')
-    resultGUI.physicalDose = resultGUI_cell{1,1}.physicalDose + resultGUI_cell{1,2}.physicalDose;
+    resultGUI.physicalDose = resultGUI_cell{1,1}.physicalDose * pln(1).numOfFractions + resultGUI_cell{1,2}.physicalDose * pln(2).numOfFractions;
 elseif isfield(resultGUI_cell{1,1},'physicalDose') && ~isfield(resultGUI_cell{1,2},'physicalDose')
-    resultGUI.physicalDose1 = resultGUI_cell{1,1}.physicalDose;
+    resultGUI.physicalDose1 = resultGUI_cell{1,1}.physicalDose * pln(1).numOfFractions;
 elseif ~isfield(resultGUI_cell{1,1},'physicalDose') && isfield(resultGUI_cell{1,2},'physicalDose')
-    resultGUI.physicalDose2 = resultGUI_cell{1,2}.physicalDose;
+    resultGUI.physicalDose2 = resultGUI_cell{1,2}.physicalDose * pln(2).numOfFractions;
 end
 
 % if isfield(resultGUI_cell{1,1},'mLETDose') && isfield(resultGUI_cell{1,2},'mLETDose')
