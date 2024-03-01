@@ -7,7 +7,7 @@ load("BOXPHANTOM.mat")
 
 %% Create a CT image series
 
-ctDim = [ct.cubeDim(1),ct.cubeDim(2),ct.cubeDim(3)]; % x,y,z dimensions
+ctDim = [160,160,130]; % x,y,z dimensions
 ctResolution = [3,3,3]; % x,y,z the same here!
 
 % This uses the phantombuilder class, which helps to easily implement a 
@@ -26,16 +26,14 @@ builder = matRad_PhantomBuilder(ctDim,ctResolution,1);
 
 %define objectives for the VOI
 
-objective1 = struct(DoseObjectives.matRad_SquaredDeviation(800,45));
-objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
-objective3 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0)); 
-objective4 = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
+objective1 = struct(DoseObjectives.matRad_SquaredDeviation(800,60));
+objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 
 builder.addSphericalTarget('PTV',10,'offset',[-5 -5 0],'objectives',objective1,'HU',0);
-builder.addSphericalOAR('OAR1',12,'offset',[19 -7 0],'objectives',objective3);
+builder.addSphericalOAR('OAR1',12,'offset',[19 -7 0],'objectives',objective2);
 builder.addSphericalOAR('OAR2',7,'offset',[-5 7 0],'objectives',objective2);
 builder.addSphericalOAR('OAR3',7,'offset',[-5 -16 0],'objectives',objective2);
-builder.addBoxOAR('Body',[60,70,60],'objectives',objective4);
+builder.addBoxOAR('Body',[60,70,60],'objectives',objective2);
 
 % This adds two Box OAR and one Spherical Target in the middle
 % For Box Volumes a name (here Volume2 and Volume3) has to be specified,
@@ -50,7 +48,7 @@ builder.addBoxOAR('Body',[60,70,60],'objectives',objective4);
 objective1 = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
 objective2 = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 
-builder.addBoxOAR('OAR2',[10,20,80],'offset',[-12,0,0],'objectives',objective1);
+builder.addBoxOAR('OAR2',[10,20,80],'offset',[-12,0,0],'objectives',objective2);
 builder.addBoxOAR('OAR3',[20,10,80],'offset',[0,-16,0],'objectives',objective2);
 % builder.addBoxOAR('OAR3',[40,-40,40])
 

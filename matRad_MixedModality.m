@@ -1,7 +1,7 @@
 matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
-matRad_cfg.propOpt.defaultAccChangeTol = 1e-06;
+matRad_cfg.propOpt.defaultAccChangeTol = 1e-04;
 load 'NEW-BOXPHANTOM-Overlap.mat'
 
 % changing alphaX

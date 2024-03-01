@@ -19,10 +19,13 @@ dij.mLETDose = {};
         for k = 1:dij.numOfModalities
             if ~isfield(dij.original_Dijs{1,k},'mLETDose')
                 % dij.original_Dijs{1,k}.mLETDose{1} = zeros(size(dij.original_Dijs{1,k}.physicalDose{1}));
-                Size = (ones(size(dij.original_Dijs{1,k}.physicalDose{1})) * 0.3);
-                logicalSize = Size == 0.3;
-                mL = sparse(logicalSize,true,true,dij.doseGrid.numOfVoxels,dij.original_Dijs{1,k}.totalNumOfBixels);
-                dij.original_Dijs{1,k}.mLETDose{1} = mL .* dij.original_Dijs{1,k}.physicalDose{1};
+                %Size = (ones(size(dij.original_Dijs{1,k}.physicalDose{1})) * 0.3);
+                %logicalSize = Size == 0.3;
+                %mL = sparse(logicalSize,true,Size,dij.doseGrid.numOfVoxels,dij.original_Dijs{1,k}.totalNumOfBixels);
+                %dij.original_Dijs{1,k}.mLETDose{1} = mL .* dij.original_Dijs{1,k}.physicalDose{1};
+                
+                dij.original_Dijs{1,k}.mLETDose{1} = 0.3 * dij.original_Dijs{1,k}.physicalDose{1};
+
             end
         end
 
