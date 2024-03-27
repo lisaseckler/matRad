@@ -162,7 +162,7 @@ else
             for i = 1:size(cst,1)
                 for j = 1:size(cst{i,6},2)
                     if strcmp(pln.radiationMode, 'MixMod')
-                        DoseParameters = cst{i,6}{j}.getDoseParameters()./sum([dij.STfractions{:}]);
+                        DoseParameters = cst{i,6}{j}.getDoseParameters()./dij.totalNumOfFractions;%sum([dij.STfractions{:}]);
                     else
                         DoseParameters = cst{i,6}{j}.getDoseParameters();
                     end
@@ -353,6 +353,9 @@ for i = 1 : rowCst(1,1)
     end
 end
 
+% preconditioning
+dij = matRad_scalingPhotonDij(dij);
+matRad_cfg.dispInfo('SUCCESS. I Scaled The Photon Dij  !! \n');
 %Get Bounds
 
 if ~isfield(pln.propOpt,'boundMU')
@@ -419,6 +422,8 @@ if FLAG_ROB_OPT || numel(ixForOpt) > 1
         Cnt = Cnt + 1;
     end
 end
-
+% rescaling photon Dij
+resultGUI{1,2}.w = resultGUI{1,2}.w ./ 100;
+matRad_cfg.dispInfo('SUCCESS. I Rescaled The Photon Weight Vector  !! \n');
 % unblock mex files
 clear mex
