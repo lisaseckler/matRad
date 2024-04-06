@@ -162,7 +162,7 @@ else
             for i = 1:size(cst,1)
                 for j = 1:size(cst{i,6},2)
                     if strcmp(pln.radiationMode, 'MixMod')
-                        DoseParameters = cst{i,6}{j}.getDoseParameters()./dij.totalNumOfFractions;%sum([dij.STfractions{:}]);
+                        DoseParameters = cst{i,6}{j}.getDoseParameters()./sum([dij.STfractions{:}]);
                     else
                         DoseParameters = cst{i,6}{j}.getDoseParameters();
                     end
@@ -339,23 +339,9 @@ if isfield(pln,'propOpt') && isfield(pln.propOpt,'useLogSumExpForRobOpt')
     optiProb.useLogSumExpForRobOpt = pln.propOpt.useLogSumExpForRobOpt;
 end
 
-rowCst = size(cst);
-for i = 1 : rowCst(1,1)
-    num = size(cst{i,6});
-    for j = 1 : num(1,2)
-        if isa(cst{i,6}{j},'DirtyDoseObjectives.matRad_DirtyDoseObjective')
-            optiProb.dirtyDoseBP = matRad_DirtyDoseProjection;
-        end
-         if isa(cst{i,6}{j},'mLETDoseObjectives.matRad_mLETDoseObjective')
-            optiProb.mLETDoseBP = matRad_mLETDoseProjection;
-        end
-        
-    end
+if dij.precon
+    dij = matRad_mixModPreconditioner(dij);
 end
-
-% preconditioning
-dij = matRad_scalingPhotonDij(dij);
-matRad_cfg.dispInfo('SUCCESS. I Scaled The Photon Dij  !! \n');
 %Get Bounds
 
 if ~isfield(pln.propOpt,'boundMU')
@@ -401,13 +387,18 @@ optimizer = optimizer.optimize(wInit,optiProb,dij,cst);
 wOpt = optimizer.wResult;
 info = optimizer.resultInfo;
 bxidx = 1;
+
 for mod = 1: pln.numOfModalities
+
     wt = [];
     % split the w for current modality
     STrepmat = (~dij.spatioTemp(mod) + dij.spatioTemp(mod)*dij.numOfSTscen(mod));
     wt = reshape(wOpt(bxidx: bxidx+STrepmat*dij.original_Dijs{mod}.totalNumOfBixels-1),[dij.original_Dijs{mod}.totalNumOfBixels,STrepmat]);
     
     resultGUI{mod} = matRad_calcCubes(wt,dij.original_Dijs{mod});
+    if isfield(dij,'preconW') && dij.precon
+       wt = wt.*dij.preconW(mod);     
+    end
     resultGUI{mod}.wUnsequenced = wt;
     resultGUI{mod}.usedOptimizer = optimizer;
     resultGUI{mod}.info = info;
@@ -422,8 +413,6 @@ if FLAG_ROB_OPT || numel(ixForOpt) > 1
         Cnt = Cnt + 1;
     end
 end
-% rescaling photon Dij
-resultGUI{1,2}.w = resultGUI{1,2}.w ./ 100;
-matRad_cfg.dispInfo('SUCCESS. I Rescaled The Photon Weight Vector  !! \n');
+
 % unblock mex files
 clear mex

@@ -1,39 +1,9 @@
 matRad_rc;
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 50000;
-matRad_cfg.propOpt.defaultAccChangeTol = 1e-04;
-load 'NEW-BOXPHANTOM-Overlap.mat'
-
-% changing alphaX
-cst{2,5}.alphaX = 0.5;
-% cst{1,6}{1} = struct(DoseObjectives.matRad_SquaredUnderdosing(1000,30));
-% cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
-% cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
-% cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
-% cst{5,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(20,0));
-cst{1,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
-%cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,30));
-%cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,120));
-
-%% add margin
-% cube = zeros(ct.cubeDim);
-% cube(cst{1,4}{1}) = 1;
-% vResolution = ct.resolution;
-% vMargin = [];
-% vMargin.x = 5;
-% vMargin.y = 5;
-% vMargin.z = 5;
-% mVOIEnlarged = matRad_addMargin(cube,cst,vResolution,vMargin,1);
-% 
-% cst{4,1}    = 3;
-% cst{4,2}    = 'Margin';
-% cst{4,3}    = 'OAR';
-% cst{4,4}{1} = find(mVOIEnlarged);
-% cst{4,5}    = cst{1,5};
-% 
-% cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(300,40)); 
-
-%%
+load 'TG119.mat'
+cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0,1));
+%% 
 % meta information for treatment plan (1) 
 pln(1).numOfFractions  = 5;
 pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
@@ -41,13 +11,12 @@ pln(1).machine         = 'Generic';
 
 % beam geometry settings
 pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-% pln(1).propStf.gantryAngles    = [ 45 0 -45]; % [?] ;
-pln(1).propStf.gantryAngles    = [90];
+pln(1).propStf.gantryAngles    = [ -45 0 45 ]; % [?] ;
 pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
 pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
 pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln(1).propDoseCalc.calcLET = 1;
+pln(1).propDoseCalc.calcLET = 0;
 
 pln(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
 pln(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
@@ -62,7 +31,7 @@ pln(1).propDoseCalc.doseGrid.resolution.z = 8; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
-modelName    = 'constRBE';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
+modelName    = 'MCN';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
                                    % MCN: McNamara-variable RBE model for protons  % WED: Wedenberg-variable RBE model for protons 
                                    % LEM: Local Effect Model for carbon ions
 
@@ -125,37 +94,28 @@ plnJO = matRad_plnWrapper(pln);
 stf = matRad_stfWrapper(ct,cst,plnJO);
 % Dij Calculation
 dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-% mLETDose sumed up
-%dij = matRad_calcmLETDose(dij,pln);
+dij.precon = 1;
+% dij = matRad_mixModPreconditioner(dij);
 % Fluence optimization 
-result = matRad_fluenceOptimizationJO(dij,cst,plnJO);
-resultGUI = matRad_calcResultGUIstruct(result);
-% pln_original = pln;
-% pln = pln(2);
-% matRadGUI
-
-%% DVH calculation
-
+resultGUI = matRad_fluenceOptimizationJO(dij,cst,plnJO);
 
 %% Visualization
-% slice = 59;
-% 
-% photon_plan = resultGUI{2};
-% proton_plan = resultGUI{1};
-% totalPlan = pln(1).numOfFractions.*proton_plan.(quantityOpt) + pln(2).numOfFractions.*photon_plan.(quantityOpt);
-% 
-% f = figure;
-% subplot(1,3,1);
-%     imagesc(proton_plan.(quantityOpt)(:,:,slice));
-%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-%     title('Proton Plan');
-% subplot(1,3,2);
-%     imagesc(photon_plan.(quantityOpt)(:,:,slice));
-%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-%     title('Photon Plan');
-% subplot(1,3,3);
-%     imagesc(totalPlan(:,:,slice));
-%     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
-%     title('Total Plan');
+slice = 59;
+
+photon_plan = resultGUI{2};
+proton_plan = resultGUI{1};
+totalPlan = pln(1).numOfFractions.*proton_plan.(quantityOpt) + pln(2).numOfFractions.*photon_plan.(quantityOpt);
+
+f = figure;
+subplot(1,3,1);
+    imagesc(proton_plan.(quantityOpt)(:,:,slice));
+    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+    title('Proton Plan');
+subplot(1,3,2);
+    imagesc(photon_plan.(quantityOpt)(:,:,slice));
+    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+    title('Photon Plan');
+subplot(1,3,3);
+    imagesc(totalPlan(:,:,slice));
+    matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
+    title('Total Plan');
