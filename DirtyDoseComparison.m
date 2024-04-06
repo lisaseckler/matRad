@@ -3,7 +3,7 @@ clear
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 500000;
 matRad_cfg.propOpt.defaultAccChangeTol = 1e-05;
-load TG119.mat
+load PROSTATE.mat
 
 %% add margin
 cube = zeros(ct.cubeDim);
@@ -28,9 +28,9 @@ cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 % changing alphaX
 %cst{2,5}.alphaX = 0.1;
 %%
-cst{2,6}{2} = struct(DirtyDoseObjectives.matRad_VarianceDirtyDose(100));
-cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
-cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredDeviation(800,60));
+cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(0.6,0));
+cst{9,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(0.6,0));
 % cst{2,6}{3} = struct(DoseObjectives.matRad_SquaredUnderdosing(100,60));
 %cst{2,6}{2} = struct(DoseObjectives.matRad_SquaredOverdosing(100,61));
 %cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
@@ -45,7 +45,7 @@ pln(1).machine         = 'Generic';
 
 % beam geometry settings
 pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [45 0 -45]; % [?] ;
+pln(1).propStf.gantryAngles    = [90 270]; % [?] ;
 %pln(1).propStf.gantryAngles    = [90];
 pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
 pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
@@ -64,7 +64,7 @@ pln(1).propDoseCalc.doseGrid.resolution.x = 3; % [mm]
 pln(1).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
 pln(1).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
-quantityOpt  = 'RBExD';     % options: physicalDose, effect, RBExD
+quantityOpt  = 'physicalDose';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
 modelName    = 'constRBE';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
                                    % MCN: McNamara-variable RBE model for protons  % WED: Wedenberg-variable RBE model for protons 
@@ -88,7 +88,7 @@ pln(2).machine         = 'Generic';
 
 % beam geometry settings
 pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
+pln(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
 pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
 pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
 pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
@@ -105,8 +105,8 @@ pln(2).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
 pln(2).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
 % pln(2).propDoseCalc.doseGrid.resolution = ct.resolution;
 
-quantityOpt  = 'RBExD';     % options: physicalDose, effect, RBExD
-modelName    = 'LEM';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
+quantityOpt  = 'physicalDose';     % options: physicalDose, effect, RBExD
+modelName    = 'none';             % none: for photons, protons, carbon            % constRBE: constant RBE for photons and protons 
                                    % MCN: McNamara-variable RBE model for protons  % WED: Wedenberg-variable RBE model for protons 
                                    % LEM: Local Effect Model for carbon ions
 
@@ -138,17 +138,6 @@ dij = matRad_calcDirtyDose(2,dij,pln);
 dij = matRad_calcmLETDose(dij,pln);
 dij_without = dij;
 [result_without,optimizer_without] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
-%%
-% mixed plan
-% pln(1).numOfFractions  = 10;
-% pln(2).numOfFractions  = 20;
-% plnJO_mix2 = matRad_plnWrapper(pln);
-% stf_mix2 = matRad_stfWrapper(ct,cst,plnJO_mix2);
-% % Dij Calculation
-% dij_mix2 = matRad_calcCombiDose(ct,stf_mix2,plnJO_mix2,cst,false);
-% % Dirty Dose Calculation
-% dij_mix2 = matRad_calcDirtyDose(2,dij_mix2,pln);
-% [result_mix3,optimizer_mix3] = matRad_fluenceOptimizationJO(dij_mix,cst,plnJO_mix);
 
 physDose_without = result_without{1,1}.physicalDose * 5 + result_without{1,2}.physicalDose * 25;
 RBExD_without = result_without{1,1}.physicalDose * 1.1 * 5 + result_without{1,2}.physicalDose * 1.1 * 25;
@@ -159,7 +148,7 @@ LET_without = (result_without{1,1}.LET .* result_without{1,1}.physicalDose * 5 +
 %save("ProtonPhoton_TG119_MixedModalities_without.mat","-v7.3")
 
 cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
-cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
+cst{8,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 cst = matRad_prepCst(cst, sparecst);
 cst_DD = cst;
 stf = matRad_stfWrapper(ct,cst,plnJO);
@@ -185,86 +174,86 @@ dirtyDose_DD = result_DD{1,1}.dirtyDose * 5 + result_DD{1,2}.dirtyDose * 25;
 LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5 + 0.3 * result_DD{1,2}.physicalDose * 25)./physDose_DD;
 %save("ProtonPhoton_TG119_MixedModalities_DD.mat","-v7.3")
 
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(300,0));
-cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(300,0));
-cst = matRad_prepCst(cst, sparecst);
-cst_DD300 = cst;
-stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_DD300 = stf;
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij_DD300 = dij;
-[result_DD300,optimizer_DD300] = matRad_fluenceOptimizationJO(dij_DD300,cst_DD300,plnJO);
-% resultGUI_1 = matRad_calcResultGUIstruct(result);
-%result_first = result;
-%dij_first = dij;
-%result_DD = result;
-%
-physDose_DD300 = result_DD300{1,1}.physicalDose * 5 + result_DD300{1,2}.physicalDose * 25;
-RBExD_DD300 = result_DD300{1,1}.physicalDose * 1.1 * 5 + result_DD300{1,2}.physicalDose * 1.1 * 25;
-%effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
-dirtyDose_DD300 = result_DD300{1,1}.dirtyDose * 5 + result_DD300{1,2}.dirtyDose * 25;
-%LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
-%LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
-LET_DD300 = (result_DD300{1,1}.LET .* result_DD300{1,1}.physicalDose * 5 + 0.3 * result_DD300{1,2}.physicalDose * 25)./physDose_DD300;
-
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(30,0));
-cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(30,0));
-cst = matRad_prepCst(cst, sparecst);
-cst_DD30 = cst;
-stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_DD30 = stf;
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij_DD30 = dij;
-[result_DD30,optimizer_DD30] = matRad_fluenceOptimizationJO(dij_DD30,cst_DD30,plnJO);
-% resultGUI_1 = matRad_calcResultGUIstruct(result);
-%result_first = result;
-%dij_first = dij;
-%result_DD = result;
-%
-physDose_DD30 = result_DD30{1,1}.physicalDose * 5 + result_DD30{1,2}.physicalDose * 25;
-RBExD_DD30 = result_DD30{1,1}.physicalDose * 1.1 * 5 + result_DD30{1,2}.physicalDose * 1.1 * 25;
-%effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
-dirtyDose_DD30 = result_DD30{1,1}.dirtyDose * 5 + result_DD30{1,2}.dirtyDose * 25;
-%LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
-%LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
-LET_DD30 = (result_DD30{1,1}.LET .* result_DD30{1,1}.physicalDose * 5 + 0.3 * result_DD30{1,2}.physicalDose * 25)./physDose_DD30;
-
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(10,0));
-cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(10,0));
-cst = matRad_prepCst(cst, sparecst);
-cst_DD10 = cst;
-stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_DD10 = stf;
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij_DD10 = dij;
-[result_DD10,optimizer_DD10] = matRad_fluenceOptimizationJO(dij_DD10,cst_DD10,plnJO);
-% resultGUI_1 = matRad_calcResultGUIstruct(result);
-%result_first = result;
-%dij_first = dij;
-%result_DD = result;
-%
-physDose_DD10 = result_DD10{1,1}.physicalDose * 5 + result_DD10{1,2}.physicalDose * 25;
-RBExD_DD10 = result_DD10{1,1}.physicalDose * 1.1 * 5 + result_DD10{1,2}.physicalDose * 1.1 * 25;
-%effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
-dirtyDose_DD10 = result_DD10{1,1}.dirtyDose * 5 + result_DD10{1,2}.dirtyDose * 25;
-%LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
-%LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
-LET_DD10 = (result_DD10{1,1}.LET .* result_DD10{1,1}.physicalDose * 5 + 0.3 * result_DD10{1,2}.physicalDose * 25)./physDose_DD10;
+% cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(300,0));
+% cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(300,0));
+% cst = matRad_prepCst(cst, sparecst);
+% cst_DD300 = cst;
+% stf = matRad_stfWrapper(ct,cst,plnJO);
+% stf_DD300 = stf;
+% % Dij Calculation
+% dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+% % Dirty Dose Calculation
+% dij = matRad_calcDirtyDose(2,dij,pln);
+% dij = matRad_calcmLETDose(dij,pln);
+% dij_DD300 = dij;
+% [result_DD300,optimizer_DD300] = matRad_fluenceOptimizationJO(dij_DD300,cst_DD300,plnJO);
+% % resultGUI_1 = matRad_calcResultGUIstruct(result);
+% %result_first = result;
+% %dij_first = dij;
+% %result_DD = result;
+% %
+% physDose_DD300 = result_DD300{1,1}.physicalDose * 5 + result_DD300{1,2}.physicalDose * 25;
+% RBExD_DD300 = result_DD300{1,1}.physicalDose * 1.1 * 5 + result_DD300{1,2}.physicalDose * 1.1 * 25;
+% %effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
+% dirtyDose_DD300 = result_DD300{1,1}.dirtyDose * 5 + result_DD300{1,2}.dirtyDose * 25;
+% %LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
+% %LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
+% LET_DD300 = (result_DD300{1,1}.LET .* result_DD300{1,1}.physicalDose * 5 + 0.3 * result_DD300{1,2}.physicalDose * 25)./physDose_DD300;
+% 
+% cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(30,0));
+% cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(30,0));
+% cst = matRad_prepCst(cst, sparecst);
+% cst_DD30 = cst;
+% stf = matRad_stfWrapper(ct,cst,plnJO);
+% stf_DD30 = stf;
+% % Dij Calculation
+% dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+% % Dirty Dose Calculation
+% dij = matRad_calcDirtyDose(2,dij,pln);
+% dij = matRad_calcmLETDose(dij,pln);
+% dij_DD30 = dij;
+% [result_DD30,optimizer_DD30] = matRad_fluenceOptimizationJO(dij_DD30,cst_DD30,plnJO);
+% % resultGUI_1 = matRad_calcResultGUIstruct(result);
+% %result_first = result;
+% %dij_first = dij;
+% %result_DD = result;
+% %
+% physDose_DD30 = result_DD30{1,1}.physicalDose * 5 + result_DD30{1,2}.physicalDose * 25;
+% RBExD_DD30 = result_DD30{1,1}.physicalDose * 1.1 * 5 + result_DD30{1,2}.physicalDose * 1.1 * 25;
+% %effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
+% dirtyDose_DD30 = result_DD30{1,1}.dirtyDose * 5 + result_DD30{1,2}.dirtyDose * 25;
+% %LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
+% %LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
+% LET_DD30 = (result_DD30{1,1}.LET .* result_DD30{1,1}.physicalDose * 5 + 0.3 * result_DD30{1,2}.physicalDose * 25)./physDose_DD30;
+% 
+% cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(10,0));
+% cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(10,0));
+% cst = matRad_prepCst(cst, sparecst);
+% cst_DD10 = cst;
+% stf = matRad_stfWrapper(ct,cst,plnJO);
+% stf_DD10 = stf;
+% % Dij Calculation
+% dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+% % Dirty Dose Calculation
+% dij = matRad_calcDirtyDose(2,dij,pln);
+% dij = matRad_calcmLETDose(dij,pln);
+% dij_DD10 = dij;
+% [result_DD10,optimizer_DD10] = matRad_fluenceOptimizationJO(dij_DD10,cst_DD10,plnJO);
+% % resultGUI_1 = matRad_calcResultGUIstruct(result);
+% %result_first = result;
+% %dij_first = dij;
+% %result_DD = result;
+% %
+% physDose_DD10 = result_DD10{1,1}.physicalDose * 5 + result_DD10{1,2}.physicalDose * 25;
+% RBExD_DD10 = result_DD10{1,1}.physicalDose * 1.1 * 5 + result_DD10{1,2}.physicalDose * 1.1 * 25;
+% %effect = result_DD{1,1}.effect * 5 + result_DD{1,2}.effect * 25;
+% dirtyDose_DD10 = result_DD10{1,1}.dirtyDose * 5 + result_DD10{1,2}.dirtyDose * 25;
+% %LET_DD = result_DD{1,1}.LET * 5 + result_DD{1,2}.LET * 5;
+% %LET_DD = (result_DD{1,1}.LET .* result_DD{1,1}.physicalDose * 5)./physDose_DD;
+% LET_DD10 = (result_DD10{1,1}.LET .* result_DD10{1,1}.physicalDose * 5 + 0.3 * result_DD10{1,2}.physicalDose * 25)./physDose_DD10;
 
 cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(10,0));
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(10,0));
+cst{8,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(10,0));
 cst = matRad_prepCst(cst, sparecst);
 cst_mL10 = cst;
 stf = matRad_stfWrapper(ct,cst,plnJO);
@@ -289,53 +278,53 @@ dirtyDose_mL10 = result_mL10{1,1}.dirtyDose * 5 + result_mL10{1,2}.dirtyDose * 2
 %LET_mL6 = (result_mL6{1,1}.LET .* result_mL6{1,1}.physicalDose * 5)./physDose_mL6;
 LET_mL10 = (result_mL10{1,1}.LET .* result_mL10{1,1}.physicalDose * 5 + 0.3 * result_mL10{1,2}.physicalDose * 25)./physDose_mL10;
 
-cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(30,0));
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(30,0));
-cst = matRad_prepCst(cst, sparecst);
-cst_mL30 = cst;
-stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_mL30 = stf;
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij_mL30 = dij;
-[result_mL30,optimizer_mL30] = matRad_fluenceOptimizationJO(dij_mL30,cst_mL30,plnJO);
-physDose_mL30 = result_mL30{1,1}.physicalDose * 5 + result_mL30{1,2}.physicalDose * 25;
-RBExD_mL30 = result_mL30{1,1}.physicalDose * 1.1 * 5 + result_mL30{1,2}.physicalDose * 1.1 * 25;
-dirtyDose_mL30 = result_mL30{1,1}.dirtyDose * 5 + result_mL30{1,2}.dirtyDose * 25;
-LET_mL30 = (result_mL30{1,1}.LET .* result_mL30{1,1}.physicalDose * 5 + 0.3 * result_mL30{1,2}.physicalDose * 25)./physDose_mL30;
-
-cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,0));
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,0));
-cst = matRad_prepCst(cst, sparecst);
-cst_mL = cst;
-stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_mL = stf;
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
-% Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij_mL = dij;
-[result_mL,optimizer_mL] = matRad_fluenceOptimizationJO(dij_mL,cst_mL,plnJO);
-% resultGUI_1 = matRad_calcResultGUIstruct(result);
-%result_first = result;
-%dij_first = dij;
-%result_mL = result;
-%
-physDose_mL = result_mL{1,1}.physicalDose * 5 + result_mL{1,2}.physicalDose * 25;
-RBExD_mL = result_mL{1,1}.physicalDose * 1.1 * 5 + result_mL{1,2}.physicalDose * 1.1 * 25;
-%effect = result_mL2{1,1}.effect * 5 + result_mL2{1,2}.effect * 25;
-dirtyDose_mL = result_mL{1,1}.dirtyDose * 5 + result_mL{1,2}.dirtyDose * 25;
-%LET_mL = result_mL{1,1}.LET * 5 + result_mL{1,2}.LET * 5;
-%LET_mL6 = (result_mL6{1,1}.LET .* result_mL6{1,1}.physicalDose * 5)./physDose_mL6;
-LET_mL = (result_mL{1,1}.LET .* result_mL{1,1}.physicalDose * 5 + 0.3 * result_mL{1,2}.physicalDose * 25)./physDose_mL;
-%save("ProtonPhoton_TG119_MixedModalities_mL.mat","-v7.3")
-
+% cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(30,0));
+% cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(30,0));
+% cst = matRad_prepCst(cst, sparecst);
+% cst_mL30 = cst;
+% stf = matRad_stfWrapper(ct,cst,plnJO);
+% stf_mL30 = stf;
+% % Dij Calculation
+% dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+% % Dirty Dose Calculation
+% dij = matRad_calcDirtyDose(2,dij,pln);
+% dij = matRad_calcmLETDose(dij,pln);
+% dij_mL30 = dij;
+% [result_mL30,optimizer_mL30] = matRad_fluenceOptimizationJO(dij_mL30,cst_mL30,plnJO);
+% physDose_mL30 = result_mL30{1,1}.physicalDose * 5 + result_mL30{1,2}.physicalDose * 25;
+% RBExD_mL30 = result_mL30{1,1}.physicalDose * 1.1 * 5 + result_mL30{1,2}.physicalDose * 1.1 * 25;
+% dirtyDose_mL30 = result_mL30{1,1}.dirtyDose * 5 + result_mL30{1,2}.dirtyDose * 25;
+% LET_mL30 = (result_mL30{1,1}.LET .* result_mL30{1,1}.physicalDose * 5 + 0.3 * result_mL30{1,2}.physicalDose * 25)./physDose_mL30;
+% 
+% cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,0));
+% cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,0));
+% cst = matRad_prepCst(cst, sparecst);
+% cst_mL = cst;
+% stf = matRad_stfWrapper(ct,cst,plnJO);
+% stf_mL = stf;
+% % Dij Calculation
+% dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+% % Dirty Dose Calculation
+% dij = matRad_calcDirtyDose(2,dij,pln);
+% dij = matRad_calcmLETDose(dij,pln);
+% dij_mL = dij;
+% [result_mL,optimizer_mL] = matRad_fluenceOptimizationJO(dij_mL,cst_mL,plnJO);
+% % resultGUI_1 = matRad_calcResultGUIstruct(result);
+% %result_first = result;
+% %dij_first = dij;
+% %result_mL = result;
+% %
+% physDose_mL = result_mL{1,1}.physicalDose * 5 + result_mL{1,2}.physicalDose * 25;
+% RBExD_mL = result_mL{1,1}.physicalDose * 1.1 * 5 + result_mL{1,2}.physicalDose * 1.1 * 25;
+% %effect = result_mL2{1,1}.effect * 5 + result_mL2{1,2}.effect * 25;
+% dirtyDose_mL = result_mL{1,1}.dirtyDose * 5 + result_mL{1,2}.dirtyDose * 25;
+% %LET_mL = result_mL{1,1}.LET * 5 + result_mL{1,2}.LET * 5;
+% %LET_mL6 = (result_mL6{1,1}.LET .* result_mL6{1,1}.physicalDose * 5)./physDose_mL6;
+% LET_mL = (result_mL{1,1}.LET .* result_mL{1,1}.physicalDose * 5 + 0.3 * result_mL{1,2}.physicalDose * 25)./physDose_mL;
+% %save("ProtonPhoton_TG119_MixedModalities_mL.mat","-v7.3")
+% 
 cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(6,0));
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(6,0));
+cst{8,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(6,0));
 cst = matRad_prepCst(cst, sparecst);
 cst_mL6 = cst;
 stf = matRad_stfWrapper(ct,cst,plnJO);
@@ -408,57 +397,97 @@ title('Ref - DD10')
 zoom(4)
 
 %%
-cube = result_without{1,1}.physicalDose * 5;
-plane = 3;
-slice = 80;
-doseWindow = [0 60];
-
-figure,
-subplot(5,3,1)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Referenzprotonendosis')
-zoom(4)
-
-cube = result_without{1,2}.physicalDose * 25;
-plane = 3;
-slice = 80;
-doseWindow = [0 60];
-
-subplot(5,3,2)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Referenzphotonendosis')
-zoom(4)
-
 cube = physDose_without;
 plane = 3;
-slice = 80;
-doseWindow = [min(cube(:)) max(cube(:))];
+slice = 40;
+doseWindow = [0 70];
 
-subplot(5,3,3)
+figure,
+subplot(3,3,1)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
 title('Referenz-Gesamtdosis')
 zoom(4)
 
-cube = result_DD10{1,1}.physicalDose * 5;
+cube = dirtyDose_without;
 plane = 3;
-slice = 80;
-doseWindow = [0 60];
+slice = 40;
+doseWindow = [0 40];
 
-subplot(5,3,4)
+subplot(3,3,2)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Protonendosis DD(10,0)')
+title('Referenz-Gesamt-DirtyDose')
 zoom(4)
 
-cube = result_DD10{1,2}.physicalDose * 25;
+cube = LET_without;
 plane = 3;
-slice = 80;
-doseWindow = [0 60];
+slice = 40;
+doseWindow = [0 6];
 
-subplot(5,3,5)
+subplot(3,3,3)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Photonendosis DD(10,0)')
+title('Referenz-LETd')
 zoom(4)
 
+cube = physDose_DD;
+plane = 3;
+slice = 40;
+doseWindow = [0 70];
+
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamtdosis DD(100,0)')
+zoom(4)
+
+cube = dirtyDose_DD;
+plane = 3;
+slice = 40;
+doseWindow = [0 40];
+
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamt-DirtyDose DD(100,0)')
+zoom(4)
+
+cube = LET_DD;
+plane = 3;
+slice = 40;
+doseWindow = [0 6];
+
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamt-LETd DD(100,0)')
+zoom(4)
+
+cube = physDose_mL6;
+plane = 3;
+slice = 40;
+doseWindow = [0 70];
+
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamtdosis LxD(6,0)')
+zoom(4)
+
+cube = dirtyDose_mL6;
+plane = 3;
+slice = 40;
+doseWindow = [0 40];
+
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamt-DirtyDose LxD(6,0)')
+zoom(4)
+
+cube = LET_mL6;
+plane = 3;
+slice = 40;
+doseWindow = [0 6];
+
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('Gesamt-LETd LxD(6,0)')
+zoom(3)
+%%
 cube = physDose_DD10;
 plane = 3;
 slice = 80;
