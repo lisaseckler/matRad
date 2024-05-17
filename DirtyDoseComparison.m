@@ -3,7 +3,7 @@ clear
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 500000;
 matRad_cfg.propOpt.defaultAccChangeTol = 1e-05;
-load PROSTATE.mat
+load TG119.mat
 
 %% add margin
 cube = zeros(ct.cubeDim);
@@ -21,16 +21,17 @@ cst{4,3}    = 'OAR';
 cst{4,4}{1} = find(mVOIEnlarged);
 cst{4,5}    = cst{1,5};
 
-cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30)); 
+cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0)); 
 %cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 
 
 % changing alphaX
 %cst{2,5}.alphaX = 0.1;
 %%
-cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(0.6,0));
-cst{9,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(0.6,0));
+cst{2,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredUnderdosingDirtyDose(100,30));
+cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
+cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 % cst{2,6}{3} = struct(DoseObjectives.matRad_SquaredUnderdosing(100,60));
 %cst{2,6}{2} = struct(DoseObjectives.matRad_SquaredOverdosing(100,61));
 %cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
@@ -45,7 +46,7 @@ pln(1).machine         = 'Generic';
 
 % beam geometry settings
 pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [90 270]; % [?] ;
+pln(1).propStf.gantryAngles    = [45 0 -45]; % [?] ;
 %pln(1).propStf.gantryAngles    = [90];
 pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
 pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
@@ -88,7 +89,7 @@ pln(2).machine         = 'Generic';
 
 % beam geometry settings
 pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(2).propStf.gantryAngles    = [0:72:359]; % [?] ;
+pln(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
 pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
 pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
 pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
@@ -125,28 +126,29 @@ pln(2).multScen = matRad_multScen(ct,scenGenType);
 sparecst = 0;
 
 cst = matRad_prepCst(cst, sparecst);
-cst_without = cst;
+%cst_without = cst;
 % Plan Wrapper
 plnJO = matRad_plnWrapper(pln);
 % Stf Wrapper
 stf = matRad_stfWrapper(ct,cst,plnJO);
-stf_without = stf;
+%stf_without = stf;
 % Dij Calculation
 dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
 dij = matRad_calcDirtyDose(2,dij,pln);
 dij = matRad_calcmLETDose(dij,pln);
-dij_without = dij;
-[result_without,optimizer_without] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+dij.precon = 0;
+%dij_without = dij;
+[result_Under,optimizer_Under] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
 
-physDose_without = result_without{1,1}.physicalDose * 5 + result_without{1,2}.physicalDose * 25;
-RBExD_without = result_without{1,1}.physicalDose * 1.1 * 5 + result_without{1,2}.physicalDose * 1.1 * 25;
+physDose_U100 = result_U100{1,1}.physicalDose * 5 + result_U100{1,2}.physicalDose * 25;
+RBExD_U100 = result_U100{1,1}.physicalDose * 1.1 * 5 + result_U100{1,2}.physicalDose * 1.1 * 25;
 %effect_without = result_without{1,1}.effect * 5 + result_without{1,2}.effect * 25;
-dirtyDose_without = result_without{1,1}.dirtyDose * 5 + result_without{1,2}.dirtyDose * 25;
+dirtyDose_U100 = result_U100{1,1}.dirtyDose * 5 + result_U100{1,2}.dirtyDose * 25;
 %LET_without = result_without{1,1}.LET * 5 + result_without{1,2}.LET * 5;
-LET_without = (result_without{1,1}.LET .* result_without{1,1}.physicalDose * 5 + 0.3 * result_without{1,2}.physicalDose * 25)./physDose_without;
+LET_U100 = (result_U100{1,1}.LET .* result_U100{1,1}.physicalDose * 5 + 0.3 * result_U100{1,2}.physicalDose * 25)./physDose_U100;
 %save("ProtonPhoton_TG119_MixedModalities_without.mat","-v7.3")
-
+%%
 cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 cst{8,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 cst = matRad_prepCst(cst, sparecst);
@@ -399,94 +401,94 @@ zoom(4)
 %%
 cube = physDose_without;
 plane = 3;
-slice = 40;
+slice = 80;
 doseWindow = [0 70];
 
 figure,
 subplot(3,3,1)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Referenz-Gesamtdosis')
+title('Reference total dose')
 zoom(4)
 
-cube = dirtyDose_without;
+cube = result_without{1,1}.physicalDose * 5;
 plane = 3;
-slice = 40;
-doseWindow = [0 40];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,2)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Referenz-Gesamt-DirtyDose')
+title('Reference proton dose')
 zoom(4)
 
-cube = LET_without;
+cube = result_without{1,2}.physicalDose * 25;
 plane = 3;
-slice = 40;
-doseWindow = [0 6];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,3)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Referenz-LETd')
+title('Reference photon dose')
 zoom(4)
 
-cube = physDose_DD;
+cube = physDose_U100;
 plane = 3;
-slice = 40;
+slice = 80;
 doseWindow = [0 70];
 
 subplot(3,3,4)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamtdosis DD(100,0)')
+title('total dose DD U(100,30)')
 zoom(4)
 
-cube = dirtyDose_DD;
+cube = result_U100{1,1}.physicalDose * 5;
 plane = 3;
-slice = 40;
-doseWindow = [0 40];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,5)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamt-DirtyDose DD(100,0)')
+title('proton dose DD U(100,30)')
 zoom(4)
 
-cube = LET_DD;
+cube = result_U100{1,1}.physicalDose * 25;
 plane = 3;
-slice = 40;
-doseWindow = [0 6];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,6)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamt-LETd DD(100,0)')
+title('photon dose DD U(100,30)')
 zoom(4)
 
-cube = physDose_mL6;
+cube = physDose_U100O100;
 plane = 3;
-slice = 40;
+slice = 80;
 doseWindow = [0 70];
 
 subplot(3,3,7)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamtdosis LxD(6,0)')
+title('total dose DD U(100,30), O(100,0)')
 zoom(4)
 
-cube = dirtyDose_mL6;
+cube = result_U100O100{1,1}.physicalDose * 5;
 plane = 3;
-slice = 40;
-doseWindow = [0 40];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,8)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamt-DirtyDose LxD(6,0)')
+title('proton dose U(100,30), O(100,0)')
 zoom(4)
 
-cube = LET_mL6;
+cube = result_U100O100{1,2}.physicalDose * 25;
 plane = 3;
-slice = 40;
-doseWindow = [0 6];
+slice = 80;
+doseWindow = [0 70];
 
 subplot(3,3,9)
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Gesamt-LETd LxD(6,0)')
-zoom(3)
+title('photon dose U(100,30), O(100,0)')
+zoom(4)
 %%
 cube = physDose_DD10;
 plane = 3;
