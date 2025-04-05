@@ -162,7 +162,6 @@ classdef matRad_BackProjection < handle
             %Instantiate the quantities
            
             this.quantities = cellfun(@(x) x(), {selectedQuantitiesMeta.handle}, 'UniformOutput',false)';
-            
             distributionQuantities = cellfun(@(x) isa(x, 'matRad_DistributionQuantity'), this.quantities);
             
             if  any(distributionQuantities)
@@ -230,26 +229,26 @@ classdef matRad_BackProjection < handle
                 end
                 
                 % Get quantities for all structures.
-                allTargetQuantities = unique(cellfun(@(x) x.quantity, cst{targetIdx,6}, 'UniformOutput', false));
+                allTargetQuantities = cellfun(@(x) x.quantity, cst{targetIdx,6}, 'UniformOutput', false);
 
                 % I want to initialize teh weights on the primary
                 % quantities only if they are available. Example:
                 % PhysicalDose + LET objectives on the target, I only want
                 % to consider the physical dose for the weight
                 % initialization
-                primaryQuantities = {'physicalDose', 'constRBExDose','effect','RBExDose','BED'};
+                primaryQuantities = {'physicalDose', 'constantRBExDose','effect','RBExDose','BED'};
 
-                [targetQtForInitilaization, tmpIdx] = intersect(allTargetQuantities, primaryQuantities);
+                targetQtForInitilaization = intersect(allTargetQuantities, primaryQuantities);
                 
                 if isempty(targetQtForInitilaization)
                     % If none of the primary quantities is set, just take the first one
                     targetQtForInitilaization = allTargetQuantities(1);
-                else
+                %else
                     % Just want to simplify it down and select one
-                    % quantity, just thake the one with the highest
+                    % quantity, just take the one with the highest
                     % "importance" in the primaryQuantities. This can be
                     % changed later
-                    targetQtForInitilaization = targetQtForInitilaization(end);
+                    %targetQtForInitilaization = targetQtForInitilaization(end);
                 end
 
                 matRad_cfg.dispInfo(sprintf('%s selected as quantity for the weight initialization\n', targetQtForInitilaization{:}));
@@ -260,77 +259,88 @@ classdef matRad_BackProjection < handle
 
                 % Get prescription
                 % Select all dose objectives/constraints
-                targetObjIdx = cellfun(@(x) (isa(x, 'DoseObjectives.matRad_DoseObjective') || ...
+                targetObjIdx = find(cellfun(@(x) (isa(x, 'DoseObjectives.matRad_DoseObjective') || ...
                                              isa(x, 'DoseConstraints.matRad_DoseConstraint')) ...
                                             && any(strcmp(x.quantity, targetQtForInitilaization)),...    % And be a selected quantity for initialization
-                                            cst{targetIdx,6});
+                                            cst{targetIdx,6}));
             
-
                 % Get prescriptions for all objectives for the target
-                d_pres = cellfun(@(x) x.getDoseParameters(), cst{targetIdx,6}(targetObjIdx), 'UniformOutput',false);
-                d_pres = cellfun(@(x) x(~isinf(x)), d_pres, 'UniformOutput',false);
-
-                % Only catch the "effect" case, as it's the onlya case with
+                % d_pres = cellfun(@(x) x.getDoseParameters(), cst{targetIdx,6}(targetObjIdx), 'UniformOutput',false);
+                % d_pres = cellfun(@(x) x(~isinf(x)), d_pres, 'UniformOutput',false);
+                
+                % Only catch the "effect" case, as it's the only case with
                 % a different strategy
-                if any(strcmp(targetQtForInitilaization, 'effect'))
 
-                    % This is to reproduce old branch
-                    d_pres = matRad_Effect.setBiologicalDosePrescriptions(cst{targetIdx,6}{targetObjIdx}, cst{targetIdx,5}.alphaX, cst{targetIdx,5}.betaX);
-                    % Set biological dose prescription
-                    % Get alpha/beta instances. No photon effect for now.
-                    % Easy to add later
-                    try
-                        alphaQuantity    = matRad_BackProjection.getQuantityInstanceFromName('AlphaDose');
-                        sqrtBetaQuantity = matRad_BackProjection.getQuantityInstanceFromName('SqrtBetaDose');
-                    catch
-                        try 
-                            % For probabilistic planning
-                            alphaQuantity    = matRad_BackProjection.getQuantityInstanceFromName('AlphaDoseExp');
-                            sqrtBetaQuantity = matRad_BackProjection.getQuantityInstanceFromName('SqrtBetaDoseExp');
+                % targetQtDorOpt, not in the same order as qts in cst
+                % becasue of intersect function
+                bixelWeight = [];
+                for objIdx=targetObjIdx
+                    
+                    currTargetQuantity = cst{targetIdx,6}{objIdx}.quantity;
+                    
+                    if strcmp(currTargetQuantity, 'effect')
+
+                        % This is to reproduce old branch
+                        d_pres_effect = matRad_Effect.setBiologicalDosePrescriptions(cst{targetIdx,6}{targetObjIdx}, cst{targetIdx,5}.alphaX, cst{targetIdx,5}.betaX);
+                        d_pres_effect = cellfun(@(x) x(~isinf(x)), d_pres_effect, 'UniformOutput',false);
+                        d_pres_effect = mean([d_pres_effect{:}]);
+
+                        % Set biological dose prescription
+                        % Get alpha/beta instances. No photon effect for now.
+                        % Easy to add later
+                        try
+                            alphaQuantity    = matRad_BackProjection.getQuantityInstanceFromName('AlphaDose');
+                            sqrtBetaQuantity = matRad_BackProjection.getQuantityInstanceFromName('SqrtBetaDose');
                         catch
-
+                            try 
+                                % For probabilistic planning
+                                alphaQuantity    = matRad_BackProjection.getQuantityInstanceFromName('AlphaDoseExp');
+                                sqrtBetaQuantity = matRad_BackProjection.getQuantityInstanceFromName('SqrtBetaDoseExp');
+                            catch
+    
+                            end
                         end
+    
+                        aTmp = alphaQuantity.computeQuantity(dij,1,wOnes);
+                        bTmp = sqrtBetaQuantity.computeQuantity(dij,1,wOnes);
+    
+                        p = sum(aTmp)/sum(bTmp.^2);
+                        q = -d_pres_effect/sum(bTmp.^2);
+    
+                        bixelWeight = -p/2 + sqrt((p^2)/4 - q);
+    
+                    else
+    
+                        % The bixelWeight is just: TargetPrescription/mean(qt_wOnes)
+                        
+                        % get the average out of all the parametrs
+                        d_pres_qt = cst{targetIdx,6}{objIdx}.getDoseParameters();
+                        d_pres_qt = mean(d_pres_qt(~isinf(d_pres_qt)));
+                        
+                        % Get the taget voxels
+                        V = unique(cat(1,cst{targetIdx,4}{:})); % Getting all CT scenarios here, but d computed only on the first scenario later
+    
+                        % Instantiate the quantities. targetQtForInitilaization
+                        % is now unique cell, but could change in the future
+                        % qtInstances = cellfun(@(qT) matRad_BackProjection.getQuantityInstanceFromName(qT), targetQtForInitilaization, 'UniformOutput', false);
+                        qtInstances = matRad_BackProjection.getQuantityInstanceFromName(currTargetQuantity);
+                        
+                        % Compute the quantity with the wOnes weigths
+                        % d_wOnes = cellfun(@(qT) qT.computeQuantity(dij, 1,wOnes), qtInstances, 'UniformOutput',false);
+                        d_wOnes = qtInstances.computeQuantity(dij, 1,wOnes);
+    
+                        % If d is a distribution, get the voxels, if its a
+                        % scalar, just get the value
+                        if isa(qtInstances, 'matRad_DistributionQuantity')
+                            d_wOnes = mean(d_wOnes(V));
+                        end
+                        
+                        % Get bixels weight
+                        bixelWeight = [bixelWeight, d_pres_qt/d_wOnes];
+    
                     end
-
-                    aTmp = alphaQuantity.computeQuantity(dij,1,wOnes);
-                    bTmp = sqrtBetaQuantity.computeQuantity(dij,1,wOnes);
-
-                    p = sum(aTmp)/sum(bTmp.^2);
-                    q = -d_pres/sum(bTmp.^2);
-
-                    bixelWeight = -p/2 + sqrt((p^2)/4 - q);
-
-                else
-
-                    % The bixelWeight is just: TargetPrescription/mean(qt_wOnes)
-                    
-
-
-                    % ghet the average out of all the parametrs
-                    d_pres = mean([d_pres{:}]);
-
-                    % Get the taget voxels
-                    V = unique(cat(1,cst{targetObjIdx,4}{:})); % Getting all CT scenarios here, but d computed only on the first scenario later
-
-                    % Instantiate the quantities. targetQtForInitilaization
-                    % is now unique cell, but could change in the future
-                    qtInstances = cellfun(@(qT) matRad_BackProjection.getQuantityInstanceFromName(qT), targetQtForInitilaization, 'UniformOutput', false);
-                    
-                    % Compute the quantity with the wOnes weigths
-                    d_wOnes = cellfun(@(qT) qT.computeQuantity(dij, 1,wOnes), qtInstances, 'UniformOutput',false);
-
-                    % If d is a distribution, get the voxels, if its a
-                    % scalar, just get the value
-                    if isa(qtInstances{1}, 'matRad_DistributionQuantity')
-                        d_wOnes = cellfun(@(qT) mean(qT(V)), d_wOnes, 'UniformOutput',false);
-                    end
-                    
-                    % Get bixels weight
-                    bixelWeight = d_pres/d_wOnes{1};
-
                 end
-
-                w = bixelWeight * wOnes;
+                w = mean(bixelWeight,2) * wOnes;
 
         end
 
