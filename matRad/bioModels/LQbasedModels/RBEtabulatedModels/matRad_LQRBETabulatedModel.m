@@ -240,11 +240,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             % data.includedIonZ. TODO: change in the RBE table entry the
             % included Ion Z with some more structured particle information
             % nABratios = numel(this.RBEtable.data);
-
-
-            %availableZs = arrayfun(@(abRatio) abRatio.includedIonZ, this.RBEtable.data, 'UniformOutput',false);
             availableZs = RBEtable.data(1).includedIons;
-            %requiredFragments = this.fragmentsToInclude;
             
             if any(~ismember(fragments, availableZs))
                 excludedFragments = fragments(~ismember(fragments, availableZs));

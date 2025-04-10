@@ -31,13 +31,12 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
         
         requiredQuantities = {'spectra','physicalDose'};
         kernelQuantities = {'spectra'};
-
         possibleRadiationModes = {'protons','helium','carbon'};
     end
 
     properties
         weightBy;
-        requiredSpectra;
+        baseDataKernel; % This is set upon initialization of the model according to the specific weighting quantity
     end
 
     methods
@@ -143,8 +142,8 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
         function updatePropertyValues(this)
         
             if ~isempty(this.weightBy) && ~isempty(this.fragmentsToInclude)
-            
-                this.requiredSpectra = cellfun(@(fragment) ['Spectra.', this.weightBy, '.', fragment, '.Data'], this.fragmentsToInclude, 'UniformOutput',false); %[requiredSpectraData;requriedEnergies];
+                
+                this.baseDataKernel = cellfun(@(fragment) ['spectra.', this.weightBy, '.', fragment, '.Data'], this.fragmentsToInclude, 'UniformOutput',false); %[requiredSpectraData;requriedEnergies];
             end
 
 
