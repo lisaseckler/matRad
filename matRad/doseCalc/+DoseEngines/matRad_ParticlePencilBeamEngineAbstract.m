@@ -241,19 +241,22 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
                 for i = 1:numel(this.bioKernelQuantities)
                     % If bioKernel is in the form
                     % spectra.weightBy.fragment.Data catches the fragment
-                    eval(sprintf('X.%s = baseData.%s', regexprep(this.bioKernelQuantities{i}, 'spectra\.(\w)+\.(\w)+\.(\w)+', '$2'), this.bioKernelQuantities{i}));
+                    eval(sprintf('X.%s = baseData.%s;', regexprep(this.bioKernelQuantities{i}, 'spectra\.(\w)+\.(\w)+\.(\w)+', '$2'), this.bioKernelQuantities{i}));
                 end
             end
             
             % Make sure all the kernels have the same size
-            for x = fieldnames(X)
-                if size(X.(x{1}),1) ~= numel(depths) && size(X.(x{1}),2) == numel(depths) % If transposed, transpose back
-                    X.(x{1}) = X.(x{1})';
-                else
-                    matRad_cfg.dispError(sprintf('Incorrect size for kernel: %s to be interpolated', x{1}));
+            for x = fieldnames(X)'
+                if size(X.(x{1}),1) ~= numel(depths)
+                    if size(X.(x{1}),2) == numel(depths) % If transposed, transpose back
+                        X.(x{1}) = X.(x{1})';
+                    else
+                        matRad_cfg =  MatRad_Config.instance();
+                        matRad_cfg.dispError(sprintf('Incorrect size for kernel: %s to be interpolated', x{1}));
+                    end
                 end
             end
-            
+
             % LET
             if this.calcLET
                 X.LET = baseData.LET;
