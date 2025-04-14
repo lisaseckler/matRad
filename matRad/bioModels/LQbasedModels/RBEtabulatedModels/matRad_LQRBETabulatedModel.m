@@ -178,7 +178,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             end
         end
 
-        function energies = getFragmentEnergiesFromTable(abRatioIndex, fragment, eUnits)
+        function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
             % Converts energies in MeV/u to MeV if necessary. Assumes that
             % the base data spectra are given in total energy. TODO: find a
             % consisten way of providing this information and check
