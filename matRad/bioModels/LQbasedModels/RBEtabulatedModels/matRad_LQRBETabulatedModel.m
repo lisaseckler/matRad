@@ -73,8 +73,8 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             cstDownsampled = matRad_setOverlapPriorities(cst);
 
             % resizing cst to dose cube resolution
-            cstDownsampled = matRad_resizeCstToGrid(cstDownsampled,dij.ctGrid.x,dij.ctGrid.y,dij.ctGrid.z,...
-                dij.doseGrid.x,dij.doseGrid.y,dij.doseGrid.z);
+            %cstDownsampled = matRad_resizeCstToGrid(cstDownsampled,dij.ctGrid.x,dij.ctGrid.y,dij.ctGrid.z,...
+            %    dij.doseGrid.x,dij.doseGrid.y,dij.doseGrid.z);
             
             tmpScenVdoseGrid = cell(numOfCtScen,1);
 
@@ -101,8 +101,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 % check if cst is compatiable
                 if ~isempty(cstDownsampled{i,5}) && isfield(cstDownsampled{i,5},'alphaX') && isfield(cstDownsampled{i,5},'betaX')
  
-                    %Set mapping between alphaX,betaX and tissueIndex
-                    
+                    %Set mapping between alphaX,betaX and tissueIndex                    
                     IdxTissue = cstDownsampled{i,5}.TissueClass;
  
                     % check consitency of biological baseData and cst settings
