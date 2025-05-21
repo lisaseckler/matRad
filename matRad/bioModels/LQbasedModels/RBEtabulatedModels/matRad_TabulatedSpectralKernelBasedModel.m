@@ -70,7 +70,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 
             % Collect the spectra from the bixel, for each fragment
             % For now assume all fragments have same energy.
-            spectraEnergies = bixel.baseData.spectra.(this.weightBy).energies;
+            spectraEnergies = bixel.baseData.spectra.Fluence.energyBin;
             
             % Get the tissue classes within the bixel
             bixelTissueIndexes = unique(bixel.vTissueIndex)';
@@ -82,7 +82,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             for i=bixelTissueIndexes
                 [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentsToInclude, 'UniformOutput',false);          
             end
-
+             
             alphaE = arrayfun(@(fragment) horzcat(curTissueAlphaE{:,fragment}), [1:numel(this.fragmentsToInclude)], 'UniformOutput',false);
             betaE  = arrayfun(@(fragment) horzcat(curTissueBetaE{:,fragment}),  [1:numel(this.fragmentsToInclude)], 'UniformOutput',false);
 
@@ -100,10 +100,9 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             spectraBixelDenominator = sum([spectraFragmentDenominator{:}],2);
 
             % Create containers for alpha and beta for each fragment
-            alphaWeightedFragmentSpectra = NaN*ones(numel(bixel.radDepths),nFragments);
+            alphaWeightedFragmentSpectra = NaN*ones(numel(bixel.radDepths),nFragments); % only NaN
             betaWeightedFragmentSpectra  = NaN*ones(numel(bixel.radDepths),nFragments);
-            
-            
+
             for i=bixelTissueIndexes
  
                 % Get the spectrum-weighted alpha/beta for each fragment (sums over the energy bins at each bixel radDepth)
@@ -121,11 +120,11 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             end
 
             % Normalize the quantities
-            bixel.alpha = alphaWeightedSpectra./spectraBixelDenominator;
+            bixel.alpha = alphaWeightedSpectra./spectraBixelDenominator; %only NaN
             bixel.beta  = betaWeightedSpectra./spectraBixelDenominator;
         end
     end
-
+    
     methods
 
         function assignDefaultProperties(this)

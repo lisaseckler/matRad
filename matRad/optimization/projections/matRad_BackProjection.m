@@ -190,7 +190,7 @@ classdef matRad_BackProjection < handle
                 for j=1:size(cst{i,6},2)
                     obj = cst{i,6}{j};
                     qtIdx = find(arrayfun(@(qtMeta) strcmp(qtMeta.quantityName, obj.quantity), selectedQuantitiesMeta));
-                    if isa(this.quantities{qtIdx}, 'matRad_ScalarQuantity')
+                    if isa(this.quantities, 'matRad_ScalarQuantity')
                         if isa(obj, 'DoseObjectives.matRad_DoseObjective') || isa(obj, 'OmegaObjectives.matRad_OmegaObjective')
                             this.quantities{qtIdx}.useStructsOptimization = [this.quantities{qtIdx}.useStructsOptimization,i];
                         elseif isa(obj, 'DoseConstraints.matRad_DoseConstraint') || isa(obj, 'OmegaConstraints.matRad_VarianceConstraint')
@@ -229,7 +229,8 @@ classdef matRad_BackProjection < handle
                 end
                 
                 % Get quantities for all structures.
-                allTargetQuantities = cellfun(@(x) x.quantity, cst{targetIdx,6}, 'UniformOutput', false);
+                str{1} = cst{targetIdx,6}{1,1};
+                allTargetQuantities = cellfun(@(x) x.quantity, str, 'UniformOutput', false);
 
                 % I want to initialize teh weights on the primary
                 % quantities only if they are available. Example:
@@ -412,7 +413,7 @@ classdef matRad_BackProjection < handle
 
         end
 
-        function [optQuantities,constraintQuantities] = getOptimizationConstraintQuantitiesFromCst(cst)
+        function [optQuantities,constraintQuantities] = getOptimizationConstraintQuantitiesFromCst(cst,pln)
             
             useStructsForOmega = [];
             useStructsForConstraintOmega = [];

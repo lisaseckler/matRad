@@ -63,6 +63,20 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             %%%% not cover the whole interpEnergy range interpolation gives
             %%%% NaN.
 
+            %for i = 1:size(this.RBEtable.data,2)
+             if min(fragmentRBEtable.energies(:)) > min(interpEnergies(:))
+              matRad_cfg = MatRad_Config.instance();
+              matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
+              alphaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
+              betaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.beta(1,1);
+             end
+             if max(fragmentRBEtable.energies(:)) < max(interpEnergies(:))
+              matRad_cfg = MatRad_Config.instance();
+              matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
+              alphaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
+              betaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.beta(end,1);
+             end
+            %end
             %%%%
 
         end
@@ -169,7 +183,8 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 if ~isempty(ratioIndexInTable)
                     fragmentRBEtable.alpha    = this.RBEtable.data(ratioIndexInTable).alpha(:,fragmentIndexInTable);
                     fragmentRBEtable.beta     = this.RBEtable.data(ratioIndexInTable).beta(:,fragmentIndexInTable);
-                    fragmentRBEtable.energies = this.getFragmentEnergiesFromTable(ratioIndexInTable, fragment, eUnits);
+                    %fragmentRBEtable.energies = this.getFragmentEnergiesFromTable(ratioIndexInTable,fragment, eUnits);
+                    fragmentRBEtable.energies = this.RBEtable.data(ratioIndexInTable).energies;
                 else
                     matRad_cfg.dispError('AlphaX/BetaX ratio = %f/%f not available in RBEtable: %s',selectedAlphaX,selectedBetaX,this.RBEtableName);
                 end
@@ -178,29 +193,91 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             end
         end
 
-        function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
-            % Converts energies in MeV/u to MeV if necessary. Assumes that
-            % the base data spectra are given in total energy. TODO: find a
-            % consisten way of providing this information and check
-            % consistency between RBEtable and base data.
+        % function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
+        %     % Converts energies in MeV/u to MeV if necessary. Assumes that
+        %     % the base data spectra are given in total energy. TODO: find a
+        %     % consisten way of providing this information and check
+        %     % consistency between RBEtable and base data.
+        % 
+        %     energies = this.RBEtable.data(abRatioIndex).energies;
+        % 
+        %     if strcmp(eUnits, 'MeV/u')
+        %         switch fragment
+        % 
+        %             case 'H1'
+        %                 mass = 1;
+        % 
+        %             case 'C'
+        %                 mass = 12;
+        % 
+        %         end
+        % 
+        %         energies = energies*mass;
+        %     end
+        % 
+        % end
+        % function energies = getFragmentEnergiesFromTable(this,abRatioIndex,fragment, eUnits)
+        %     %     % Converts energies in MeV/u to MeV if necessary. Assumes that
+        %     %     % the base data spectra are given in total energy. TODO: find a
+        %     %     % consisten way of providing this information and check
+        %     %     % consistency between RBEtable and base data.
+        %     %
+        %     energies = this.RBEtable.data(abRatioIndex).energies;
+        %     % this.RBEtable.meta.energyDef = input('What unit did you use, MeV/u or MeV?',"s");
+        % 
+        % 
+        %     if strcmp(eUnits, 'MeV/u')
+        %         if ~isfield(this.RBEtable.data(1),'convFragEnergy')
+        %             v = zeros(1,10);
+        %             for i = 1:size(this.RBEtable.data,2)
+        %                 this.RBEtable.data(i).convFragEnergy = struct('H1',v,'He',v,'Li',v,'Be',v,'B',v,'C',v);
+        %             end
+        %         end
+        %         %this.RBEtable.meta.consideredFragments = input('Which fragments do you want to look at? Create a string array!');
+        %         this.RBEtable.meta.consideredFragments = fragment;
+        %         switch this.RBEtable.meta.consideredFragments
+        % 
+        %             case "H1"
+        %                 mass = 1.00794;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.H1 = this.RBEtable.data(i).energies;
+        %                 end
+        %             case "He"
+        %                 mass = 4.002602;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.He = this.RBEtable.data(i).energies;
+        %                 end
+        %             case "Li"
+        %                 mass = 6.941;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.Li = this.RBEtable.data(i).energies;
+        %                 end
+        %             case "Be"
+        %                 mass = 9.012182;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.Be = this.RBEtable.data(i).energies;
+        %                 end
+        %             case "B"
+        %                 mass = 10.811;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.B = this.RBEtable.data(i).energies;
+        %                 end
+        %             case "C"
+        %                 mass = 12.0107;
+        %                 for i = 1: size(this.RBEtable.data,2)
+        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
+        %                     this.RBEtable.data(i).convFragEnergy.C = this.RBEtable.data(i).energies;
+        %                 end
+        % 
+        %         end
+        %     end
+        % end
 
-            energies = this.RBEtable.data(abRatioIndex).energies;
-
-            if strcmp(eUnits, 'MeV/u')
-                switch fragment
-
-                    case 'H1'
-                        mass = 1;
-
-                    case 'C'
-                        mass = 12;
-
-                end
-
-                energies = energies*mass;
-            end
-
-        end
     end
 
     methods
@@ -248,25 +325,29 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
     methods (Static)
         function RBEtable = loadRBEtable(fileName)
-            
+
             % This function loads the specified RBE table
             matRad_cfg = MatRad_Config.instance();
 
-            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','RBEtables'),...    % default matratd folder
-                          fullfile(matRad_cfg.primaryUserFolder, 'RBEtables')};             % user defined RBE table
+            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','RBEtables'),...    % default matrad folder
+                fullfile(matRad_cfg.primaryUserFolder, 'RBEtables')};             % user defined RBE table
 
             try
                 load(fullfile(searchPath{1}, [fileName, '.mat']), 'RBEtable');
+
             catch
                 try
-                    laod(fullfile(searchPath{2}, [fileName, '.mat']), 'RBEtable');
+                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'RBEtable');
+
                 catch
                     matRad_cfg.dispError('Cannot find RBEtable: %s', fileName);
                 end
             end
-
         end
 
+
+
+            
         function checkTableConsistency(RBEtable, fragments)
 
            

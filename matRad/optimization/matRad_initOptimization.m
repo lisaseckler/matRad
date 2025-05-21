@@ -165,7 +165,7 @@ end
 backProjection = matRad_BackProjection();
 
 % Initilaize optimization quantities
-[optQuantities, constraintQuantities] = backProjection.getOptimizationConstraintQuantitiesFromCst(cst);
+[optQuantities, constraintQuantities] = backProjection.getOptimizationConstraintQuantitiesFromCst(cst,pln);
 backProjection.instantiateQuatities(optQuantities,constraintQuantities,dij,cst);
 
 % Initilaize weights
