@@ -22,14 +22,15 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
     properties
         RBEtableName;
         defaultRBETable;
-        fragmentsToInclude;
+        tableFragmentIndexes;
     end
 
     properties (SetAccess = protected, GetAccess = public)
         RBEtable;
+        baseDataFragmentIndexes;
     end
 
-    properties (Hidden)
+    properties 
         tissueAlphaX;               % array containing the alphaX values given in cst{i,5}. Dimension is (1,max(TissueClasses))
         tissueBetaX;                % array containing the betaX  values given in cst{i,5}. Dimension is (1,max(TissueClasses))
         availableAlphaInTable;
@@ -59,42 +60,34 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             alphaE = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.alpha, interpEnergies);
             betaE  = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.beta,  interpEnergies);
 
-            %%%% TODO: check on the table energy range. If RBEtable does
-            %%%% not cover the whole interpEnergy range interpolation gives
-            %%%% NaN.
+            if min(fragmentRBEtable.energies(:)) > min(interpEnergies(:))
+                matRad_cfg = MatRad_Config.instance();
+                % Switch off for now
+                %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
+                alphaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
+                betaE(interpEnergies < min(fragmentRBEtable.energies))  = fragmentRBEtable.beta(1,1);
+            end
+            
+            if max(fragmentRBEtable.energies(:)) < max(interpEnergies(:))
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
+                alphaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
+                betaE(interpEnergies > max(fragmentRBEtable.energies))  = fragmentRBEtable.beta(end,1);
+            end
 
-            %for i = 1:size(this.RBEtable.data,2)
-             if min(fragmentRBEtable.energies(:)) > min(interpEnergies(:))
-              matRad_cfg = MatRad_Config.instance();
-              matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
-              alphaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
-              betaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.beta(1,1);
-             end
-             if max(fragmentRBEtable.energies(:)) < max(interpEnergies(:))
-              matRad_cfg = MatRad_Config.instance();
-              matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
-              alphaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
-              betaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.beta(end,1);
-             end
-            %end
-            %%%%
 
         end
 
-        function vTissueIndex = getTissueInformation(this,~, cst, dij,vAlphaX, ~, VdoseGrid, VdoseGridScenIx)
+        function vTissueIndex = getTissueInformation(this,~, cst, dij,vAlphaX, vBetaX, VdoseGrid, VdoseGridScenIx)
 
-            % This function assumes that info in cst{i,5} has Tissue class =
-            % integer, alphaX,betaX and combination of alphaX,betaX for
-            % given tissue class is consistent
+            % The tissue index output corresponds to an array of
+            % size(nVoxels,1) containing indexing to the data in the RBE
+            % to identify the alpha/beta ratio
             matRad_cfg = MatRad_Config.instance();
 
             numOfCtScen = numel(vAlphaX);
 
             cstDownsampled = matRad_setOverlapPriorities(cst);
-
-            % resizing cst to dose cube resolution
-            %cstDownsampled = matRad_resizeCstToGrid(cstDownsampled,dij.ctGrid.x,dij.ctGrid.y,dij.ctGrid.z,...
-            %    dij.doseGrid.x,dij.doseGrid.y,dij.doseGrid.z);
             
             tmpScenVdoseGrid = cell(numOfCtScen,1);
 
@@ -103,45 +96,34 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 vTissueIndex{s}     = zeros(size(tmpScenVdoseGrid{s},1),1);
             end
 
-            allTissueClasses = cellfun(@(cstStruct) cstStruct.TissueClass, cstDownsampled(:,5), 'UniformOutput',false);
+            for s = 1:numOfCtScen
+                % Get all unique alphaX/betaX values
+                allAlphaBetaRatios = unique([vAlphaX{s}, vBetaX{s}], 'rows');
+                for i=1:size(allAlphaBetaRatios,1)
 
-            uniqueTissueClasses = unique([allTissueClasses{:}]);
+                    % Check if this alpha beta ratio is available in the
+                    % RBEtable
+                    tableDataIndex = find(ismember([this.availableAlphaInTable, this.availableBetaInTable], allAlphaBetaRatios(i,:), 'rows'));
 
-            this.tissueAlphaX = NaN*ones(numel(uniqueTissueClasses),1);
-            this.tissueBetaX  = NaN*ones(numel(uniqueTissueClasses),1);
-
-            for i=uniqueTissueClasses
-                %These should correspond to the tissue classes sampled by
-                %the bixel
-                this.tissueAlphaX(i) =  cstDownsampled{find([allTissueClasses{:}]==i,1,'first'),5}.alphaX;
-                this.tissueBetaX(i)  =  cstDownsampled{find([allTissueClasses{:}]==i,1,'first'),5}.betaX;
-            end
-
-            for i = 1:size(cstDownsampled,1)
-                % check if cst is compatiable
-                if ~isempty(cstDownsampled{i,5}) && isfield(cstDownsampled{i,5},'alphaX') && isfield(cstDownsampled{i,5},'betaX')
- 
-                    %Set mapping between alphaX,betaX and tissueIndex                    
-                    IdxTissue = cstDownsampled{i,5}.TissueClass;
- 
-                    % check consitency of biological baseData and cst settings
-                    if ~isempty(IdxTissue)
-                        for s = 1:numOfCtScen
-                            tmpScenVdoseGrid = VdoseGrid(VdoseGridScenIx{s});
-                            isInVdoseGrid = ismember(tmpScenVdoseGrid,cstDownsampled{i,4}{s});
-                            vTissueIndex{s}(isInVdoseGrid) = IdxTissue;
-                        end
+                    if isempty(tableDataIndex)
+                        matRad_cfg.dispError('One or more structures in the cst have an Alpha/Beta ratio of: %1.2f/%1.2f but no data for this ratio was found in the RBE table.',allAlphaBetaRatios(i,1), allAlphaBetaRatios(i,2));
+                    else
+                        % Select only the voxels with the current alpha/beta
+                        % ration and assign increasing tissue index
+                        voxelsWithThisAlphaBetaRatio = ismember([vAlphaX{s}, vBetaX{s}], allAlphaBetaRatios(i,:), 'rows');
+                        vTissueIndex{s}(voxelsWithThisAlphaBetaRatio) = tableDataIndex;
                     end
- 
-                else
-                    for s = 1:numOfCtScen
-                        vTissueIndex{s}(:) = 1;
-                    end
-                    matRad_cfg.dispWarning('\tTissue type of %s was set to 1\n',cstDownsampled{i,2});
                 end
             end
 
-            
+            % For now only considering the alpha/beta ratios of the first
+            % scenarios. If different ct scenarios have different
+            % alpha/beta ratios need to modify this
+            allAlphaBetaRatios = unique([vAlphaX{1}, vBetaX{1}], 'rows');
+
+            this.tissueAlphaX = allAlphaBetaRatios(:,1);
+            this.tissueBetaX  = allAlphaBetaRatios(:,2);
+
             matRad_cfg.dispInfo('done.\n');
             
         end
@@ -167,30 +149,31 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
             matRad_cfg = MatRad_Config.instance();
 
-            if ~isfield(this.RBEtable.meta, 'energyUnits')
-                eUnits = 'MeV/u'; % Default
-            else
-                eUnits = this.RBEtable.meta.energyUnits;
-            end
+            % if ~isfield(this.RBEtable.meta, 'energyUnits')
+            %     eUnits = 'MeV/u'; % Default
+            % else
+            %     eUnits = this.RBEtable.meta.energyUnits;
+            % end
 
-            selectedAlphaX = this.tissueAlphaX(tissueClass);
-            selectedBetaX  = this.tissueBetaX(tissueClass);
+            % selectedAlphaX = this.tissueAlphaX(tissueClass);
+            % selectedBetaX  = this.tissueBetaX(tissueClass);
 
-            ratioIndexInTable    = find(ismember([this.availableAlphaInTable, this.availableBetaInTable], [selectedAlphaX, selectedBetaX], 'rows'));
-            fragmentIndexInTable = find(strcmp(fragment,this.availableFragmentsInTable));
+            % TissueClass corresponds to index in RBEtable 
+            % ratioIndexInTable    = find(ismember([this.availableAlphaInTable, this.availableBetaInTable], [selectedAlphaX, selectedBetaX], 'rows'));
+            %fragmentIndexInTable = find(strcmp(fragment,this.availableFragmentsInTable));
             
-            if ~isempty(fragmentIndexInTable)
-                if ~isempty(ratioIndexInTable)
-                    fragmentRBEtable.alpha    = this.RBEtable.data(ratioIndexInTable).alpha(:,fragmentIndexInTable);
-                    fragmentRBEtable.beta     = this.RBEtable.data(ratioIndexInTable).beta(:,fragmentIndexInTable);
+            % if ~isempty(fragment)
+            %     if ~isempty(tissueClass)
+                    fragmentRBEtable.alpha    = this.RBEtable.data(tissueClass).alpha(:,fragment);
+                    fragmentRBEtable.beta     = this.RBEtable.data(tissueClass).beta(:,fragment);
                     %fragmentRBEtable.energies = this.getFragmentEnergiesFromTable(ratioIndexInTable,fragment, eUnits);
-                    fragmentRBEtable.energies = this.RBEtable.data(ratioIndexInTable).energies;
-                else
-                    matRad_cfg.dispError('AlphaX/BetaX ratio = %f/%f not available in RBEtable: %s',selectedAlphaX,selectedBetaX,this.RBEtableName);
-                end
-            else
-                matRad_cfg.dispError('fragment %s not available in table: %s', fragment, this.RBEtableName);
-            end
+                    fragmentRBEtable.energies = this.RBEtable.data(tissueClass).energies;
+            %     else
+            %         matRad_cfg.dispError('AlphaX/BetaX ratio = %1.2f/%1.2f not available in RBEtable: %s',selectedAlphaX,selectedBetaX,this.RBEtableName);
+            %     end
+            % else
+            %     matRad_cfg.dispError('fragment %s not available in table: %s', fragment, this.RBEtableName);
+            % end
         end
 
         % function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
@@ -278,13 +261,59 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
         %     end
         % end
 
+        function baseDataFragmentIndexes = getBaseDataFragmentsFromMachine(this, machine)
+            % This function looks in the base data and checks that the
+            % available fluence spectra in the machine are available for
+            % the selected fragments
+
+            matRad_cfg = MatRad_Config.instance();
+
+            baseDataFragmentIndexes = [];
+
+            baseDataFragmentsZ = [machine.data(1).(this.weightBy).spectra.Z];
+            baseDataFragmentsA = [machine.data(1).(this.weightBy).spectra.A];
+
+            baseDataZA = [baseDataFragmentsZ', baseDataFragmentsA'];
+
+            tableIncludedFragmentsZ = [this.availableFragmentsInTable(this.tableFragmentIndexes).Z];
+            tableIncludedFragmentsA = [this.availableFragmentsInTable(this.tableFragmentIndexes).A];
+
+            for fragIdx=1:numel(tableIncludedFragmentsZ)
+                currZA = [tableIncludedFragmentsZ(fragIdx), tableIncludedFragmentsA(fragIdx)];
+
+                currBaseDataIndex = find(ismember(baseDataZA, currZA, 'rows'));
+
+                if isempty(currBaseDataIndex)
+
+                    % Check for NaN values in base data
+                    if any(currZA(1) == baseDataZA(:,1))
+                        matchZ = find(currZA(1) == baseDataZA(:,1));
+                        if any(isnan(baseDataZA(matchZ,2)))
+                            currBaseDataIndex = find(ismember(baseDataZA(:,1), currZA(1)));
+                        end
+                    end
+                end
+
+                if isempty(currBaseDataIndex)
+                    matRad_cfg.dispError('One or more fragments included in the RBE table are not available in the base data kernel.');
+                end
+
+                baseDataFragmentIndexes = [baseDataFragmentIndexes, currBaseDataIndex];
+            
+            end
+
+            baseDataFragmentIndexes = unique(baseDataFragmentIndexes);
+            this.baseDataFragmentIndexes = baseDataFragmentIndexes;
+
+        end
+
     end
 
     methods
 
         function assignDefaultProperties(this)
             this.defaultRBETable =  'RBEtable_rapidLEMI_testTable';
-            this.fragmentsToInclude = {'H'};
+            this.tableFragmentIndexes = 1;
         end
 
         function updateRBEtable(this)
@@ -309,14 +338,21 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
         end
 
-        function set.fragmentsToInclude(this, value)
+        function set.tableFragmentIndexes(this, value)
 
-            if iscell(value)
-                this.fragmentsToInclude = value;
-                this.updatePropertyValues();
+            if isnumeric(value)
+                if ~isempty(this.availableFragmentsInTable)
+                    if all(value) < numel(this.availableFragmentsInTable)
+                        this.tableFragmentIndexes = value;
+                        this.updatePropertyValues();
+                    else
+                        matRad_cfg = MatRad_Config.instance();
+                        matRad_cfg.dispError('Requested fragment out of range of available fragments.');
+                    end
+                end
             else
                 matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispError('Fragments to include should be a cell array: %s', tostring(value));
+                matRad_cfg.dispError('Fragments to include should set the indexes of the fragments in the RBEtable. Also check the available fragments property of the biological model.');
             end
 
         end
@@ -350,13 +386,10 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             
         function checkTableConsistency(RBEtable, fragments)
 
-           
+           % This is redundant at the moment
             matRad_cfg = MatRad_Config.instance();
-            % For the time being this checks for the RBEtabel field
-            % data.includedIonZ. TODO: change in the RBE table entry the
-            % included Ion Z with some more structured particle information
-            % nABratios = numel(this.RBEtable.data);
-            availableZs = RBEtable.data(1).includedIons;
+
+            availableZs = [RBEtable.data(1).includedIons.Z];
             
             if any(~ismember(fragments, availableZs))
                 excludedFragments = fragments(~ismember(fragments, availableZs));
@@ -402,5 +435,6 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             matRad_cfg.dispInfo('\n');
 
         end
+
     end
 end

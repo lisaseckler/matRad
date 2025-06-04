@@ -1,7 +1,7 @@
 classdef (Abstract) matRad_DistributionQuantity < matRad_OptimizationQuantity
 
     properties
-        useScenarios;
+        useScenarios = 1;
     end
 
     methods

@@ -7,7 +7,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 % Properties of the model that can be defined by the users:
 %   RBEtableName        filename of the table to be included
 %
-%   fragmentsToInclude  specifies which fragments to include in the
+%   tableFragmentIndexes  specifies which fragments to include in the
 %                       biological calculation (i.e. 'H', 'He', 'C',...)
 %
 %   weightBy            specifies which kernel data is used in combination
@@ -36,7 +36,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 
     properties
         weightBy;
-        baseDataKernel; % This is set upon initialization of the model according to the specific weighting quantity
+        baseDataKernel;
     end
 
     methods
@@ -66,11 +66,12 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 
             bixel = calcBiologicalQuantitiesForBixel@matRad_LQRBETabulatedModel(this,bixel);
 
-            nFragments = numel(this.fragmentsToInclude);
+            nFragments = numel(this.baseDataFragmentIndexes);
 
             % Collect the spectra from the bixel, for each fragment
             % For now assume all fragments have same energy.
-            spectraEnergies = bixel.baseData.spectra.Fluence.energyBin;
+            % spectraEnergies = bixel.baseData.spectra.Fluence.energyBin;
+            spectraEnergies = bixel.baseData.Fluence.energyBin;
             
             % Get the tissue classes within the bixel
             bixelTissueIndexes = unique(bixel.vTissueIndex)';
@@ -80,21 +81,25 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % Change here how this is saved into alphaE to have separate
             % fragment fields
             for i=bixelTissueIndexes
-                [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentsToInclude, 'UniformOutput',false);          
+                % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.tableFragmentIndexes, 'UniformOutput',false); 
+                % The index of the fragment selected here is taken directly
+                % from the table
+                [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.tableFragmentIndexes, 'UniformOutput',false);          
             end
              
-            alphaE = arrayfun(@(fragment) horzcat(curTissueAlphaE{:,fragment}), [1:numel(this.fragmentsToInclude)], 'UniformOutput',false);
-            betaE  = arrayfun(@(fragment) horzcat(curTissueBetaE{:,fragment}),  [1:numel(this.fragmentsToInclude)], 'UniformOutput',false);
+            alphaE = arrayfun(@(fragment) horzcat(curTissueAlphaE{:,fragment}), [1:numel(this.tableFragmentIndexes)], 'UniformOutput',false);
+            betaE  = arrayfun(@(fragment) horzcat(curTissueBetaE{:,fragment}),  [1:numel(this.tableFragmentIndexes)], 'UniformOutput',false);
 
-            alphaE = cell2struct(alphaE, this.fragmentsToInclude, 2);
-            betaE  = cell2struct(betaE,  this.fragmentsToInclude, 2);
+            % alphaE = cell2struct(alphaE, this.tableFragmentIndexes, 2);
+            % betaE  = cell2struct(betaE,  this.tableFragmentIndexes, 2);
 
             % Get the spectra kernels to be used (one for each fragment).
-            bixelSpectra = cell2struct(cellfun(@(fragment) squeeze(kernel.(fragment)),this.fragmentsToInclude, 'UniformOutput',false), this.fragmentsToInclude, 2);
+            bixelSpectra = arrayfun(@(fragmentIdx) squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.baseDataFragmentIndexes, 'UniformOutput',false);
            
             % Get normalization for each fragment. This is sum over
             % energies
-            spectraFragmentDenominator = cellfun(@(fragment) sum(bixelSpectra.(fragment),2),this.fragmentsToInclude, 'UniformOutput',false);
+            % spectraFragmentDenominator = cellfun(@(fragment) sum(bixelSpectra.(fragment),2),this.tableFragmentIndexes, 'UniformOutput',false);
+            spectraFragmentDenominator = cellfun(@(fragmentSpectra) sum(fragmentSpectra,2),bixelSpectra, 'UniformOutput',false);
 
             % Get total normalization by summing over the fragments
             spectraBixelDenominator = sum([spectraFragmentDenominator{:}],2);
@@ -106,8 +111,9 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             for i=bixelTissueIndexes
  
                 % Get the spectrum-weighted alpha/beta for each fragment (sums over the energy bins at each bixel radDepth)
-                tmpAlphaWeightedFragmentSpectra = cellfun(@(fragment) bixelSpectra.(fragment)*alphaE.(fragment)(:,i), this.fragmentsToInclude, 'UniformOutput',false);
-                tmpBetaWeightedFragmentSpectra  = cellfun(@(fragment) bixelSpectra.(fragment)*betaE.(fragment)(:,i), this.fragmentsToInclude, 'UniformOutput',false);
+                tmpAlphaWeightedFragmentSpectra = arrayfun(@(fragmentIdx) bixelSpectra{fragmentIdx}*alphaE{fragmentIdx}(:,i), [1:nFragments], 'UniformOutput',false);
+                tmpBetaWeightedFragmentSpectra  = arrayfun(@(fragmentIdx) bixelSpectra{fragmentIdx}*betaE{fragmentIdx}(:,i), [1:nFragments], 'UniformOutput',false);
+                %tmpBetaWeightedFragmentSpectra  = cellfun(@(fragment) bixelSpectra.(fragment)*betaE.(fragment)(:,i), this.tableFragmentIndexes, 'UniformOutput',false);
                 
                 % Put it in matrix form and sum over the fragments. Only
                 % include values for the correct tissue class for each
@@ -150,16 +156,23 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
        
         function updatePropertyValues(this)
         
-            if ~isempty(this.weightBy) && ~isempty(this.fragmentsToInclude)
+            if ~isempty(this.weightBy) && ~isempty(this.tableFragmentIndexes)
                 
-                this.baseDataKernel = cellfun(@(fragment) ['spectra.', this.weightBy, '.', fragment, '.Data'], this.fragmentsToInclude, 'UniformOutput',false); %[requiredSpectraData;requriedEnergies];
+                % this.baseDataKernel = cellfun(@(fragment) ['spectra.', this.weightBy, '.', fragment, '.Data'], this.tableFragmentIndexes, 'UniformOutput',false); %[requiredSpectraData;requriedEnergies];
+                % this.baseDataKernel = {this.weightBy}; %cellfun(@(fragment) ['spectra.', this.weightBy], this.tableFragmentIndexes, 'UniformOutput',false); %[requiredSpectraData;requriedEnergies];
+                % this.baseDataKernel = ;
             end
 
 
             if ~isempty(this.RBEtable)
-                this.checkTableConsistency(this.RBEtable, this.fragmentsToInclude);
+                this.checkTableConsistency(this.RBEtable, this.tableFragmentIndexes);
             end
 
+        end
+
+        function baseDataKernels = getBaseDataKernels(this, baseDataIndexes)
+            % baseDataKernels = {sprintf('%s.spectra(%s).fluenceSpectrum', this.weightBy,strjoin(string(baseDataIndexes), ','))};
+            baseDataKernels = arrayfun(@(x) sprintf('%s.spectra(%d).fluenceSpectrum',this.weightBy, x), baseDataIndexes, 'UniformOutput', false);
         end
 
     end

@@ -324,8 +324,10 @@ classdef matRad_BackProjection < handle
                         % Instantiate the quantities. targetQtForInitilaization
                         % is now unique cell, but could change in the future
                         % qtInstances = cellfun(@(qT) matRad_BackProjection.getQuantityInstanceFromName(qT), targetQtForInitilaization, 'UniformOutput', false);
-                        qtInstances = matRad_BackProjection.getQuantityInstanceFromName(currTargetQuantity);
-                        
+                        %qtInstances = this.getQuantityInstanceFromName(currTargetQuantity);
+                        availableQtNames = cellfun(@(x) x.quantityName, this.quantities, 'UniformOutput',false);
+                        qtInstances = this.quantities{strcmp(availableQtNames,currTargetQuantity)};
+
                         % Compute the quantity with the wOnes weigths
                         % d_wOnes = cellfun(@(qT) qT.computeQuantity(dij, 1,wOnes), qtInstances, 'UniformOutput',false);
                         d_wOnes = qtInstances.computeQuantity(dij, 1,wOnes);

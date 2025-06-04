@@ -173,10 +173,6 @@ if ~exist('wInit', 'var') || isempty(wInit)
     wInit = [];
 end
 
-% Easier if backprojection already knows about the optimized quantities and
-% so on
-wInit = backProjection.initializeWeights(cst,dij);
-
 % Check minimum biological quantities available
 %for qtIdx=backProjection.quantities'
 % For now like this. TODO: loop over the quantities, see what the quantity
@@ -209,6 +205,20 @@ if ~isempty(intersect([backProjection.optimizationQuantities,backProjection.cons
         dij.bx{i}(ixZeroDose) = 0;
     end
 end
+
+if all(isfield(dij,{'ax','bx'}))
+    for i = 1:numel(cst{1,4})
+        dij.ixDose{i}  = dij.bx{i}~=0;
+
+        %pre-calculations
+        dij.gamma{i}             = zeros(dij.doseGrid.numOfVoxels,dij.numOfScenarios);
+        dij.gamma{i}(dij.ixDose{i}) = dij.ax{i}(dij.ixDose{i})./(2*dij.bx{i}(dij.ixDose{i}));
+
+    end
+end
+% Easier if backprojection already knows about the optimized quantities and
+% so on
+wInit = backProjection.initializeWeights(cst,dij);
 %% calculate probabilistic quantities for probabilistic optimization if at least
 % one robust objective is defined
 
