@@ -475,8 +475,9 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Get photon parameters for RBExD calculation
             if this.calcBioDose
                 this.scorer.RBE = true;
-                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(cst,dij.doseGrid.numOfVoxels,1,VdoseGrid);
-                dij.abx(dij.bx>0) = dij.ax(dij.bx>0)./dij.bx(dij.bx>0);
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(cst,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+                %dij.abx(dij.bx>0) = dij.ax(dij.bx>0)./dij.bx(dij.bx>0);
+                dij.abx{:}(dij.bx{:}>0) = arrayfun(@(scen) dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0), [1:numel(dij.ax)], 'UniformOutput',false);
             end
 
             % save current directory to revert back to later
