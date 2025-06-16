@@ -325,6 +325,28 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             this.availableFragmentsInTable = [this.RBEtable.data(1).includedIons];
         end
 
+        function tableData = getTableDataForAlphaBeta(this, alphaX, betaX)
+            % Scroll the RBE table and check if the requested alpha beta
+            % ratio is available
+
+            tableData = [];
+            if isempty(this.RBEtable)
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispWarning('RBEtable not found');
+            else
+                for i=1:numel(this.RBEtable.data)
+                    if (this.RBEtable.data(i).alphaX == alphaX) && (this.RBEtable.data(i).betaX == betaX)
+                        tableData = this.RBEtable.data(i);
+                        continue;
+                    end
+                end
+                if isempty(tableData)
+                    matRad_cfg = MatRad_Config.instance();
+                    matRad_cfg.dispWarning(sprintf('No match found for alpha/beta = %f/%f in RBE table', alphaX, betaX));                    
+                end
+            end
+        end
+
       
     end
 
