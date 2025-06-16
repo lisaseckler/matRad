@@ -151,6 +151,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             'Scorer_RBE_LEM1','TOPAS_scorer_doseRBE_LEM1.txt.in',...
             'Scorer_RBE_WED','TOPAS_scorer_doseRBE_Wedenberg.txt.in',...
             'Scorer_RBE_MCN','TOPAS_scorer_doseRBE_McNamara.txt.in', ...
+            'Scorer_RBE_TAB', 'TOPAS_scorer_doseRBE_GenericRBETable.txt.in',...
             ... %PhaseSpace Source
             'phaseSpaceSourcePhotons' ,'VarianClinaciX_6MV_20x20_aboveMLC_w2' );
        
@@ -242,13 +243,21 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 end
 
                 % Get alpha beta parameters from bioParam struct
-                for i = 1:length(obj.bioParameters.AvailableAlphaXBetaX)
-                    if ~isempty(strfind(lower(obj.bioParameters.AvailableAlphaXBetaX{i,2}),'default'))
-                        break
-                    end
+                if isfield(obj.bioParameters, 'tissuseAlphaX')
+                    obj.bioParameters.AlphaX = obj.bioModel.tissueAlphaX(1);
+                    obj.bioParameters.BetaX  = obj.bioModel.tissueBetaX(1);
                 end
-                obj.bioParameters.AlphaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(1);
-                obj.bioParameters.BetaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(2);
+                if numel(obj.bioParameters.AlphaX)>1
+                    matRad_cfg.dispWarning('!!! Only a unique alpha/beta ratio supported at the moment. Found multiple, only the first one will be used !!!!');
+                end
+
+                % for i = 1:length(obj.bioParameters.AvailableAlphaXBetaX)
+                %     if ~isempty(strfind(lower(obj.bioParameters.AvailableAlphaXBetaX{i,2}),'default'))
+                %         break
+                %     end
+                % end
+                % obj.bioParameters.AlphaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(1);
+                % obj.bioParameters.BetaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(2);
 
             end
             if obj.scorer.LET
@@ -291,7 +300,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             if obj.scorer.RBE
                 obj.MCparam.RBE_models = obj.scorer.RBE_model;
                 [obj.MCparam.ax,obj.MCparam.bx] = matRad_getPhotonLQMParameters(cst,prod(ct.cubeDim),obj.MCparam.numOfCtScen);
-                obj.MCparam.abx(obj.MCparam.bx>0) = obj.MCparam.ax(obj.MCparam.bx>0)./obj.MCparam.bx(obj.MCparam.bx>0);
+                % obj.MCparam.abx(obj.MCparam.bx>0) = obj.MCparam.ax(obj.MCparam.bx>0)./obj.MCparam.bx(obj.MCparam.bx>0);
+                obj.MCparam.abx{:}(obj.MCparam.bx{:}>0) = arrayfun(@(scen) obj.MCparam.ax{scen}(obj.MCparam.bx{scen}>0)./obj.MCparam.bx{scen}(obj.MCparam.bx{scen}>0), 1:obj.MCparam.numOfCtScen,'UniformOutput',false);
             end
 
             % fill in bixels, rays and beams in case of dij calculation or external calculation
@@ -417,6 +427,18 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             %resultGUI = obj.getResultGUI(dij);
 
         end
+
+        function assignPropertiesFromPln(this, pln, warnWhenPropertyChanged)
+            
+            if nargin < 3 || ~isscalar(warnWhenPropertyChanged) || ~islogical(warnWhenPropertyChanged)
+                warnWhenPropertyChanged = false;
+            end
+
+            this.assignPropertiesFromPln@DoseEngines.matRad_DoseEngineBase(pln, warnWhenPropertyChanged);
+
+            this.scorer.RBE_model = {this.bioModel.model};
+
+        end
     end
 
     methods (Access = protected)
@@ -481,7 +503,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 this.scorer.RBE = true;
                 [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(cst,dij.doseGrid.numOfVoxels,this.VdoseGrid);
                 %dij.abx(dij.bx>0) = dij.ax(dij.bx>0)./dij.bx(dij.bx>0);
-                dij.abx{:}(dij.bx{:}>0) = arrayfun(@(scen) dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0), [1:numel(dij.ax)], 'UniformOutput',false);
+                dij.abx{:}(dij.bx{:}>0) = arrayfun(@(scen) dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0), 1:numel(dij.ax), 'UniformOutput',false);
             end
 
             % save current directory to revert back to later
@@ -1249,6 +1271,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_MCN);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'wed'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_WED);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB);                                
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
                             end
@@ -1258,6 +1282,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_libamtrack);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lem'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEM1);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB); 
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
                             end
@@ -1294,10 +1320,16 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 matRad_cfg.dispDebug('Writing Biologial Scorer components.\n');
                 fprintf(fID,'d:Sc/PrescribedDose = %.4f Gy\n',obj.bioParameters.PrescribedDose);
                 fprintf(fID,'b:Sc/SimultaneousExposure = %s\n',obj.bioParameters.SimultaneousExposure);
+                % For now only one alpha beta ratio supported at once.
+                % TODO: implement RT struct export to define multipl alpha
+                % beta ratios
                 fprintf(fID,'d:Sc/AlphaX = %.4f /Gy\n',obj.bioParameters.AlphaX);
                 fprintf(fID,'d:Sc/BetaX = %.4f /Gy2\n',obj.bioParameters.BetaX);
-                fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
+                fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
 
+                if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                    obj.writeGenericRBEtable(fID);
+                end
                 % Update MCparam.tallies with processed scorer
                 for i = 1:length(obj.scorer.RBE_model)
                     obj.MCparam.tallies = [obj.MCparam.tallies,{['alpha_' obj.scorer.RBE_model{i}],['beta_' obj.scorer.RBE_model{i}]}];
@@ -1316,14 +1348,14 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     obj.scorer.LET = true;
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'Wedenberg';
-                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model))
+                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'tabulated';
                 end
 
                 % Write subscorer to config files
                 for s = 1:length(scorerNames)
-                    if strcmp(obj.radiationMode,'protons')
+                    if strcmp(obj.radiationMode,'protons') && any(cellfun(@(teststr) isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
                         fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_LET      = "ProtonLET"\n',scorerPrefix,scorerNames{s});
                     end
                     fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_Dose     = "Tally_DoseToWater"\n',scorerPrefix,scorerNames{s});
@@ -1428,6 +1460,77 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     end
                 end
             end
+        end
+
+        function writeGenericRBEtable(this,fID)
+
+            matRad_cfg = MatRad_Config.instance();
+
+            RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX);
+            includedIons = this.bioModel.tableFragmentIndexes;
+            
+            ionData = [];
+            for i=includedIons
+                currIon = [];
+                currIon.Z    = RBEtableData.includedIons(i).Z;
+
+                switch currIon.Z
+                    case 1
+                        currIon.Name = 'Proton';
+                    case 2
+                        currIon.Name = 'Helium';
+                    case 3
+                        currIon.Name = 'Lithium';
+                    case 4
+                        currIon.Name = 'Beryllium';
+                    case 5
+                        currIon.Name = 'Boron';
+                    case 6
+                        currIon.Name = 'Carbon';
+                    case 7
+                        currIon.Name = 'Nitrogen';
+                    case 8
+                        currIon.Name = 'Oxygen';
+                    otherwise
+                        matRad_cfg.dispError(sqprintf('Ion with Z=%d not supported', currIon.Z))
+                end
+
+                currIon.Alpha = RBEtableData.alpha(:,i);
+                currIon.Beta  = RBEtableData.beta(:,i);
+
+                ionData = [ionData, currIon];
+            end
+            kineticEnergies = RBEtableData.energies;
+
+            % Print file lines
+            fprintf(fID, 'sv:Sc/CellLineGeneric/HCP/ParticleName 		= %d', numel(ionData));
+            arrayfun(@(ion) fprintf(fID, ' "%s"', ion.Name), ionData);
+
+            fprintf(fID, '\niv:Sc/CellLineGeneric/HCP/ParticleZ    		= %d', numel(ionData));
+            arrayfun(@(ion) fprintf(fID, ' %d', ion.Z), ionData);
+
+            fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/KineticEnergyPerNucleon 	= %d', numel(kineticEnergies));
+            arrayfun(@(energy) fprintf(fID, ' %3.4f', energy), kineticEnergies);
+            fprintf(fID, ' MeV');
+
+            % Alpha
+            for i=1:numel(ionData)
+                fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/%s/Alpha 	= %d', ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Alpha);
+                fprintf(fID, ' /Gy\n');
+                
+            end
+            
+
+            % Beta
+            for i=1:numel(ionData)
+                fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/%s/Beta 	= %d', ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Beta);
+                fprintf(fID, ' /Gy2\n');
+            end
+
+            fprintf(fID, '\n\n');
+            
         end
 
         function writeStfFields(obj,ct,stf,w,baseData)
