@@ -28,6 +28,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
     end
 
     properties
+        hlut;
+        useGivenEqDensityCube;      % Use the given density cube ct.cube and omit conversion from cubeHU.
         calcLET = false;
         calcBioDose = false;
         prescribedDose = [];
@@ -149,6 +151,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             'Scorer_RBE_LEM1','TOPAS_scorer_doseRBE_LEM1.txt.in',...
             'Scorer_RBE_WED','TOPAS_scorer_doseRBE_Wedenberg.txt.in',...
             'Scorer_RBE_MCN','TOPAS_scorer_doseRBE_McNamara.txt.in', ...
+            'Scorer_RBE_TAB', 'TOPAS_scorer_doseRBE_GenericRBETable.txt.in',...
             ... %PhaseSpace Source
             'phaseSpaceSourcePhotons' ,'VarianClinaciX_6MV_20x20_aboveMLC_w2' );
        
@@ -176,7 +179,9 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
         function setDefaults(this)
             this.setDefaults@DoseEngines.matRad_MonteCarloEngineAbstract();
             matRad_cfg = MatRad_Config.instance(); %Instance of matRad configuration class
-
+            
+            this.useGivenEqDensityCube        = matRad_cfg.defaults.propDoseCalc.useGivenEqDensityCube;
+            
             % Default execution paths are set here
             this.topasFolder = [matRad_cfg.matRadSrcRoot filesep 'doseCalc' filesep 'topas' filesep];
             this.workingDir = [matRad_cfg.primaryUserFolder filesep 'TOPAS' filesep];
@@ -238,13 +243,21 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 end
 
                 % Get alpha beta parameters from bioParam struct
-                for i = 1:length(obj.bioParameters.AvailableAlphaXBetaX)
-                    if ~isempty(strfind(lower(obj.bioParameters.AvailableAlphaXBetaX{i,2}),'default'))
-                        break
-                    end
+                if isfield(obj.bioParameters, 'tissuseAlphaX')
+                    obj.bioParameters.AlphaX = obj.bioModel.tissueAlphaX(1);
+                    obj.bioParameters.BetaX  = obj.bioModel.tissueBetaX(1);
                 end
-                obj.bioParameters.AlphaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(1);
-                obj.bioParameters.BetaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(2);
+                if numel(obj.bioParameters.AlphaX)>1
+                    matRad_cfg.dispWarning('!!! Only a unique alpha/beta ratio supported at the moment. Found multiple, only the first one will be used !!!!');
+                end
+
+                % for i = 1:length(obj.bioParameters.AvailableAlphaXBetaX)
+                %     if ~isempty(strfind(lower(obj.bioParameters.AvailableAlphaXBetaX{i,2}),'default'))
+                %         break
+                %     end
+                % end
+                % obj.bioParameters.AlphaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(1);
+                % obj.bioParameters.BetaX = obj.bioParameters.AvailableAlphaXBetaX{5,1}(2);
 
             end
             if obj.scorer.LET
@@ -283,11 +296,15 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             obj.MCparam.cubeDim = ct.cubeDim;
             obj.MCparam.ctResolution = ct.resolution;
             obj.MCparam.numOfCtScen = ct.numOfCtScen;
+            
             % Save used RBE models
             if obj.scorer.RBE
                 obj.MCparam.RBE_models = obj.scorer.RBE_model;
-                [obj.MCparam.ax,obj.MCparam.bx] = matRad_getPhotonLQMParameters(cst,prod(ct.cubeDim),obj.MCparam.numOfCtScen);
-                obj.MCparam.abx(obj.MCparam.bx>0) = obj.MCparam.ax(obj.MCparam.bx>0)./obj.MCparam.bx(obj.MCparam.bx>0);
+                [obj.MCparam.ax,obj.MCparam.bx] = matRad_getPhotonLQMParameters(obj.cstDoseGrid,prod(ct.cubeDim),obj.VdoseGrid);
+                obj.MCparam.abx = arrayfun(@(scen) zeros(size(obj.MCparam.bx{scen})), 1:obj.MCparam.numOfCtScen, 'UniformOutput',false);
+                for scen=1:obj.MCparam.numOfCtScen
+                    obj.MCparam.abx{scen}(obj.MCparam.bx{scen}>0) = obj.MCparam.ax{scen}(obj.MCparam.bx{scen}>0)./obj.MCparam.bx{scen}(obj.MCparam.bx{scen}>0);
+                end
             end
 
             % fill in bixels, rays and beams in case of dij calculation or external calculation
@@ -347,6 +364,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 obj.MCparam = load([folder filesep 'MCparam.mat'],'MCparam');
                 obj.MCparam = obj.MCparam.MCparam;
             end
+
 
             % Read out all TOPAS fields
             topasCubes = obj.readTopasCubes(folder);
@@ -413,6 +431,18 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             %resultGUI = obj.getResultGUI(dij);
 
         end
+
+        function assignPropertiesFromPln(this, pln, warnWhenPropertyChanged)
+            
+            if nargin < 3 || ~isscalar(warnWhenPropertyChanged) || ~islogical(warnWhenPropertyChanged)
+                warnWhenPropertyChanged = false;
+            end
+
+            this.assignPropertiesFromPln@DoseEngines.matRad_DoseEngineBase(pln, warnWhenPropertyChanged);
+
+            this.scorer.RBE_model = {this.bioModel.model};
+
+        end
     end
 
     methods (Access = protected)
@@ -472,11 +502,15 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 end
             end            
 
-            % Get photon parameters for RBExD calculation
+            % Get photon parameters for RBExDose calculation
             if this.calcBioDose
                 this.scorer.RBE = true;
-                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(cst,dij.doseGrid.numOfVoxels,1,VdoseGrid);
-                dij.abx(dij.bx>0) = dij.ax(dij.bx>0)./dij.bx(dij.bx>0);
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+                
+                dij.abx = arrayfun(@(scen) zeros(size(dij.bx{scen})), 1:numel(dij.ax), 'UniformOutput',false);
+                for scen=1:numel(dij.ax)
+                    dij.abx{scen}(dij.bx{scen}>0) = dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0);
+                end
             end
 
             % save current directory to revert back to later
@@ -640,6 +674,25 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
         function dij = initDoseCalc(this,ct,cst,stf)
             dij = this.initDoseCalc@DoseEngines.matRad_MonteCarloEngineAbstract(ct,cst,stf);
             matRad_cfg = MatRad_Config.instance();
+
+           % calculate rED or rSP from HU or take provided wedCube
+            if this.useGivenEqDensityCube && ~isfield(ct,'cube')
+                matRad_cfg.dispWarning('HU Conversion requested to be omitted but no ct.cube exists! Will override and do the conversion anyway!');
+                this.useGivenEqDensityCube = false;
+            end
+
+            if this.useGivenEqDensityCube
+                matRad_cfg.dispInfo('Omitting HU to rED/rSP conversion and using existing ct.cube!\n');
+            else
+                ct = matRad_calcWaterEqD(ct, stf); % Maybe we can avoid duplicating the CT here?
+            end
+
+            if isfield(ct,'hlut')
+                this.hlut = ct.hlut;
+            else
+                this.hlut = matRad_loadHLUT(ct,stf);
+            end
+
 
             % % for TOPAS we explicitly downsample the ct to the dose grid (might not be necessary in future versions with separated grids)
             % Check if CT has already been resampled
@@ -1225,6 +1278,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_MCN);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'wed'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_WED);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB);                                
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
                             end
@@ -1234,6 +1289,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_libamtrack);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lem'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEM1);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB); 
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
                             end
@@ -1251,29 +1308,33 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 % Begin writing biological scorer components: cell lines
                 switch obj.radiationMode
                     case 'protons'
+                        obj.bioParameters.cellLineName = 'CellLineGeneric';
                         fprintf(fID,'\n### Biological Parameters ###\n');
-                        fprintf(fID,'sv:Sc/CellLines = 1 "CellLineGeneric"\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/Alphax 		= Sc/AlphaX /Gy\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/Betax 		= Sc/BetaX /Gy2\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n');
+                        fprintf(fID,'d:Sc/%s/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n', obj.bioParameters.cellLineName);
                     case {'carbon','helium'}
-                        fprintf(fID,'\n### Biological Parameters ###\n');
-                        fprintf(fID,'sv:Sc/CellLines = 1 "CellGeneric_abR2"\n');
-                        fprintf(fID,'d:Sc/CellGeneric_abR2/Alphax = Sc/AlphaX /Gy\n');
-                        fprintf(fID,'d:Sc/CellGeneric_abR2/Betax = Sc/BetaX /Gy2\n\n');
-                        % fprintf(fID,'d:Sc/CellGeneric_abR2/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n');
+                        obj.bioParameters.cellLineName = 'CellLineGeneric_abR2';
                     otherwise
                         matRad_cfg.dispError([obj.radiationMode ' not implemented']);
                 end
+
+                fprintf(fID,'sv:Sc/CellLines = 1 "%s"\n',       obj.bioParameters.cellLineName);
+                fprintf(fID,'d:Sc/%s/Alphax = Sc/AlphaX /Gy\n', obj.bioParameters.cellLineName);
+                fprintf(fID,'d:Sc/%s/Betax = Sc/BetaX /Gy2\n\n',obj.bioParameters.cellLineName);
 
                 % write biological scorer components: dose parameters
                 matRad_cfg.dispDebug('Writing Biologial Scorer components.\n');
                 fprintf(fID,'d:Sc/PrescribedDose = %.4f Gy\n',obj.bioParameters.PrescribedDose);
                 fprintf(fID,'b:Sc/SimultaneousExposure = %s\n',obj.bioParameters.SimultaneousExposure);
+                % For now only one alpha beta ratio supported at once.
+                % TODO: implement RT struct export to define multipl alpha
+                % beta ratios
                 fprintf(fID,'d:Sc/AlphaX = %.4f /Gy\n',obj.bioParameters.AlphaX);
                 fprintf(fID,'d:Sc/BetaX = %.4f /Gy2\n',obj.bioParameters.BetaX);
-                fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
+                fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
 
+                if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                    obj.writeGenericRBEtable(fID, obj.bioParameters.cellLineName);
+                end
                 % Update MCparam.tallies with processed scorer
                 for i = 1:length(obj.scorer.RBE_model)
                     obj.MCparam.tallies = [obj.MCparam.tallies,{['alpha_' obj.scorer.RBE_model{i}],['beta_' obj.scorer.RBE_model{i}]}];
@@ -1292,14 +1353,14 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     obj.scorer.LET = true;
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'Wedenberg';
-                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model))
+                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'tabulated';
                 end
 
                 % Write subscorer to config files
                 for s = 1:length(scorerNames)
-                    if strcmp(obj.radiationMode,'protons')
+                    if strcmp(obj.radiationMode,'protons') && any(cellfun(@(teststr) isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
                         fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_LET      = "ProtonLET"\n',scorerPrefix,scorerNames{s});
                     end
                     fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_Dose     = "Tally_DoseToWater"\n',scorerPrefix,scorerNames{s});
@@ -1404,6 +1465,77 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     end
                 end
             end
+        end
+
+        function writeGenericRBEtable(this,fID, cellLineName)
+
+            matRad_cfg = MatRad_Config.instance();
+
+            RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX);
+            includedIons = this.bioModel.fragmentIndexesInTable;
+            
+            ionData = [];
+            for i=includedIons
+                currIon = [];
+                currIon.Z    = RBEtableData.includedIons(i).Z;
+
+                switch currIon.Z
+                    case 1
+                        currIon.Name = 'Proton';
+                    case 2
+                        currIon.Name = 'Helium';
+                    case 3
+                        currIon.Name = 'Lithium';
+                    case 4
+                        currIon.Name = 'Beryllium';
+                    case 5
+                        currIon.Name = 'Boron';
+                    case 6
+                        currIon.Name = 'Carbon';
+                    case 7
+                        currIon.Name = 'Nitrogen';
+                    case 8
+                        currIon.Name = 'Oxygen';
+                    otherwise
+                        matRad_cfg.dispError(sqprintf('Ion with Z=%d not supported', currIon.Z))
+                end
+
+                currIon.Alpha = RBEtableData.alpha(:,i);
+                currIon.Beta  = RBEtableData.beta(:,i);
+
+                ionData = [ionData, currIon];
+            end
+            kineticEnergies = RBEtableData.energies;
+
+            % Print file lines
+            fprintf(fID, 'sv:Sc/%s/HCP/ParticleName 		= %d',cellLineName, numel(ionData));
+            arrayfun(@(ion) fprintf(fID, ' "%s"', ion.Name), ionData);
+
+            fprintf(fID, '\niv:Sc/%s/HCP/ParticleZ    		= %d',cellLineName, numel(ionData));
+            arrayfun(@(ion) fprintf(fID, ' %d', ion.Z), ionData);
+
+            fprintf(fID, '\ndv:Sc/%s/HCP/KineticEnergyPerNucleon 	= %d',cellLineName, numel(kineticEnergies));
+            arrayfun(@(energy) fprintf(fID, ' %3.4f', energy), kineticEnergies);
+            fprintf(fID, ' MeV');
+
+            % Alpha
+            for i=1:numel(ionData)
+                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Alpha 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Alpha);
+                fprintf(fID, ' /Gy\n');
+                
+            end
+            
+
+            % Beta
+            for i=1:numel(ionData)
+                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Beta 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Beta);
+                fprintf(fID, ' /Gy2\n');
+            end
+
+            fprintf(fID, '\n\n');
+            
         end
 
         function writeStfFields(obj,ct,stf,w,baseData)
@@ -2168,7 +2300,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Write material converter
             switch obj.materialConverter.mode
                 case 'RSP' % Relative stopping power converter
-                    rspHlut = matRad_loadHLUT(ct,obj.radiationMode);
+                    rspHlut = obj.hlut;
                     min_HU = rspHlut(1,1);
                     max_HU = rspHlut(end,1);
 
@@ -2192,7 +2324,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         fprintf(fID,'d:Ma/%s/Density = %f g/cm3\n',unique_materials{ix},unique_rsp(ix));
                     end
 
-                    fprintf(fID,'s:Ge/Patient/Parent="World"\n');
+                    fprintf(fID,'s:Ge/Patient/Parent="Isocenter"\n');
                     fprintf(fID,'s:Ge/Patient/Type = "TsImageCube"\n');
                     fprintf(fID,'s:Ge/Patient/InputDirectory = "./"\n');
                     fprintf(fID,'s:Ge/Patient/InputFile = "%s"\n',dataFile);
@@ -2220,7 +2352,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
 
 
                 case 'HUToWaterSchneider' % Schneider converter
-                    rspHlut = matRad_loadHLUT(ct,obj.radiationMode);
+                    rspHlut = obj.hlut;
 
                     try
                         % Write Schneider Converter
@@ -2354,7 +2486,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         % write patient environment
                         matRad_cfg.dispInfo('TOPAS: Writing patient environment\n');
                         fprintf(fID,'\n# -- Patient parameters\n');
-                        fprintf(fID,'s:Ge/Patient/Parent="World"\n');
+                        fprintf(fID,'s:Ge/Patient/Parent="Isocenter"\n');
                         fprintf(fID,'s:Ge/Patient/Type = "TsImageCube"\n');
                         fprintf(fID,'b:Ge/Patient/DumpImagingValues = "True"\n');
                         fprintf(fID,'s:Ge/Patient/InputDirectory = "./"\n');
