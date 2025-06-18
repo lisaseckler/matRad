@@ -21,21 +21,22 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
     properties
         RBEtableName;
-        defaultRBETable;
-        tableFragmentIndexes;
+        includedFragments;          % Fragments to include from the RBE table. Can be "all", or a struct with filed "Z" or a struct withj fields "Z" and "A"
     end
 
     properties (SetAccess = protected, GetAccess = public)
         RBEtable;
-        baseDataFragmentIndexes;
-    end
-
-    properties 
+        fragmentIndexesInBaseData;
+        fragmentIndexesInTable;
+ 
         tissueAlphaX;               % array containing the alphaX values given in cst{i,5}. Dimension is (1,max(TissueClasses))
         tissueBetaX;                % array containing the betaX  values given in cst{i,5}. Dimension is (1,max(TissueClasses))
         availableAlphaInTable;
         availableBetaInTable;
         availableFragmentsInTable;
+        defaultRBETable;
+        defaultGenericFragments;
+        defaultFragmentZ;
     end
 
     methods
@@ -61,7 +62,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             betaE  = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.beta,  interpEnergies);
 
             if min(fragmentRBEtable.energies(:)) > min(interpEnergies(:))
-                matRad_cfg = MatRad_Config.instance();
+                %matRad_cfg = MatRad_Config.instance();
                 % Switch off for now
                 %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
                 alphaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
@@ -69,8 +70,9 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             end
             
             if max(fragmentRBEtable.energies(:)) < max(interpEnergies(:))
-                matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
+                %matRad_cfg = MatRad_Config.instance();
+                % Switch off for now
+                %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
                 alphaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
                 betaE(interpEnergies > max(fragmentRBEtable.energies))  = fragmentRBEtable.beta(end,1);
             end
@@ -149,31 +151,53 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
             matRad_cfg = MatRad_Config.instance();
 
-            % if ~isfield(this.RBEtable.meta, 'energyUnits')
-            %     eUnits = 'MeV/u'; % Default
-            % else
-            %     eUnits = this.RBEtable.meta.energyUnits;
-            % end
+            fragmentRBEtable.alpha    = this.RBEtable.data(tissueClass).alpha(:,fragment);
+            fragmentRBEtable.beta     = this.RBEtable.data(tissueClass).beta(:,fragment);
+            fragmentRBEtable.energies = this.RBEtable.data(tissueClass).energies.*this.RBEtable.data(tissueClass).includedIons(fragment).A; % RBEtable should contain energy per nucleon
+         
+        end
 
-            % selectedAlphaX = this.tissueAlphaX(tissueClass);
-            % selectedBetaX  = this.tissueBetaX(tissueClass);
+        function updateFragmentIdxInTable(this,includedFragments)
 
-            % TissueClass corresponds to index in RBEtable 
-            % ratioIndexInTable    = find(ismember([this.availableAlphaInTable, this.availableBetaInTable], [selectedAlphaX, selectedBetaX], 'rows'));
-            %fragmentIndexInTable = find(strcmp(fragment,this.availableFragmentsInTable));
-            
-            % if ~isempty(fragment)
-            %     if ~isempty(tissueClass)
-                    fragmentRBEtable.alpha    = this.RBEtable.data(tissueClass).alpha(:,fragment);
-                    fragmentRBEtable.beta     = this.RBEtable.data(tissueClass).beta(:,fragment);
-                    %fragmentRBEtable.energies = this.getFragmentEnergiesFromTable(ratioIndexInTable,fragment, eUnits);
-                    fragmentRBEtable.energies = this.RBEtable.data(tissueClass).energies;
-            %     else
-            %         matRad_cfg.dispError('AlphaX/BetaX ratio = %1.2f/%1.2f not available in RBEtable: %s',selectedAlphaX,selectedBetaX,this.RBEtableName);
-            %     end
-            % else
-            %     matRad_cfg.dispError('fragment %s not available in table: %s', fragment, this.RBEtableName);
-            % end
+            if isempty(this.RBEtable)
+                return;
+            end
+
+            matRad_cfg = MatRad_Config.instance();
+
+            if ischar(includedFragments)
+                if strcmp(includedFragments, 'all')
+
+                    % Collect all fragments from table
+                    selectedTableFragmentIndexes = 1:numel(this.RBEtable.data(1).includedIons);
+                    matRad_cfg.dispInfo(sprintf('%d fragments found in RBEtable\n', numel(selectedTableFragmentIndexes)));
+                else
+                    matRad_cfg.dispError(sprintf('Unrecognized option: "%s" for includedFragments', includedFragments));
+                end
+            elseif isstruct(includedFragments)
+                
+                if ~isfield(includedFragments, 'Z')
+                    matRad_cfg.dispWarning('No fragment Z selected, setting default');
+                    includedFragments.Z = this.defaultFragmentZ;
+                end
+
+                if isfield(includedFragments, 'A') && numel(includedFragments.A) == numel(includedFragments.Z) 
+                    A = includedFragments.A;
+                else
+                    A = zeros(size(includedFragments.Z));
+                end
+
+                Z = includedFragments.Z;
+
+                selectedTableFragmentIndexes = arrayfun(@(z,a) this.getIndexInTableForFragment(z,a), Z,A,'UniformOutput',false);
+                selectedTableFragmentIndexes = cell2mat(selectedTableFragmentIndexes);
+
+            else
+                matRad_cfg.dispError('Invalid format for includedFragments');
+                selectedTableFragmentIndexes = [];
+            end
+
+            this.fragmentIndexesInTable = selectedTableFragmentIndexes;
         end
 
         % function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
@@ -261,22 +285,22 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
         %     end
         % end
 
-        function baseDataFragmentIndexes = getBaseDataFragmentsFromMachine(this, machine)
+        function fragmentIndexesInBaseData = selectBaseDataFragmentsFromMachine(this, machine)
             % This function looks in the base data and checks that the
             % available fluence spectra in the machine are available for
             % the selected fragments
 
             matRad_cfg = MatRad_Config.instance();
 
-            baseDataFragmentIndexes = [];
+            fragmentIndexesInBaseData = [];
 
             baseDataFragmentsZ = [machine.data(1).(this.weightBy).spectra.Z];
             baseDataFragmentsA = [machine.data(1).(this.weightBy).spectra.A];
 
             baseDataZA = [baseDataFragmentsZ', baseDataFragmentsA'];
 
-            tableIncludedFragmentsZ = [this.availableFragmentsInTable(this.tableFragmentIndexes).Z];
-            tableIncludedFragmentsA = [this.availableFragmentsInTable(this.tableFragmentIndexes).A];
+            tableIncludedFragmentsZ = [this.availableFragmentsInTable(this.fragmentIndexesInTable).Z];
+            tableIncludedFragmentsA = [this.availableFragmentsInTable(this.fragmentIndexesInTable).A];
 
             for fragIdx=1:numel(tableIncludedFragmentsZ)
                 currZA = [tableIncludedFragmentsZ(fragIdx), tableIncludedFragmentsA(fragIdx)];
@@ -298,12 +322,12 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                     matRad_cfg.dispError('One or more fragments included in the RBE table are not available in the base data kernel.');
                 end
 
-                baseDataFragmentIndexes = [baseDataFragmentIndexes, currBaseDataIndex];
+                fragmentIndexesInBaseData = [fragmentIndexesInBaseData, currBaseDataIndex];
             
             end
 
-            baseDataFragmentIndexes = unique(baseDataFragmentIndexes);
-            this.baseDataFragmentIndexes = baseDataFragmentIndexes;
+            fragmentIndexesInBaseData = unique(fragmentIndexesInBaseData);
+            this.fragmentIndexesInBaseData = fragmentIndexesInBaseData;
 
         end
 
@@ -313,7 +337,10 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
         function assignDefaultProperties(this)
             this.defaultRBETable =  'RBEtable_rapidLEMI_testTable';
-            this.tableFragmentIndexes = 1;
+            %this.tableFragmentIndexes = 1;
+            this.defaultFragmentZ = 1;
+            this.defaultGenericFragments.Z = [1,2,3,4,5,6,7,8];
+            this.defaultGenericFragments.A = [1,4,7,9,11,12,14,16];
         end
 
         function updateRBEtable(this)
@@ -323,6 +350,10 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             this.availableAlphaInTable = [this.RBEtable.data(:).alphaX]';
             this.availableBetaInTable  = [this.RBEtable.data(:).betaX]';
             this.availableFragmentsInTable = [this.RBEtable.data(1).includedIons];
+
+            if ~isempty(this.includedFragments)
+                this.updateFragmentIdxInTable(this.includedFragments);
+            end
         end
 
         function tableData = getTableDataForAlphaBeta(this, alphaX, betaX)
@@ -347,6 +378,37 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             end
         end
 
+        function idx = getIndexInTableForFragment(this,Z,A)
+            if isempty(this.RBEtable)
+                return;
+            end
+
+            if ~exist('A', 'var') || isempty(A) || A==0
+                A = this.getDefaultAvalueForZ(Z);
+            end
+
+            availableZ = [this.RBEtable.data(1).includedIons.Z];
+            availableA = [this.RBEtable.data(1).includedIons.A];
+
+            tmpZIdx = find(availableZ == Z);
+            tmpAidx = find(availableA == A);
+
+            idx = intersect(tmpZIdx, tmpAidx);
+
+            if numel(idx)>1
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispError('Multiple data for the same ion detected in the RBE table, this should not happen.');
+            elseif isempty(idx)
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispWarning(sprintf('Unable to find fragment with Z=%d and A=%d in RBE table', Z,A));
+            end
+        end
+
+        function A = getDefaultAvalueForZ(this, Z)
+            idx = find(this.defaultGenericFragments.Z == Z);
+            A   = this.defaultGenericFragments.A(idx);
+        end
+
       
     end
 
@@ -360,22 +422,9 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
         end
 
-        function set.tableFragmentIndexes(this, value)
+        function set.includedFragments(this, value)
 
-            if isnumeric(value)
-                if ~isempty(this.availableFragmentsInTable)
-                    if all(value) < numel(this.availableFragmentsInTable)
-                        this.tableFragmentIndexes = value;
-                        this.updatePropertyValues();
-                    else
-                        matRad_cfg = MatRad_Config.instance();
-                        matRad_cfg.dispError('Requested fragment out of range of available fragments.');
-                    end
-                end
-            else
-                matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispError('Fragments to include should set the indexes of the fragments in the RBEtable. Also check the available fragments property of the biological model.');
-            end
+            this.updateFragmentIdxInTable(value);
 
         end
     
