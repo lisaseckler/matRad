@@ -296,12 +296,15 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             obj.MCparam.cubeDim = ct.cubeDim;
             obj.MCparam.ctResolution = ct.resolution;
             obj.MCparam.numOfCtScen = ct.numOfCtScen;
+            
             % Save used RBE models
             if obj.scorer.RBE
                 obj.MCparam.RBE_models = obj.scorer.RBE_model;
-                [obj.MCparam.ax,obj.MCparam.bx] = matRad_getPhotonLQMParameters(cst,prod(ct.cubeDim),obj.MCparam.numOfCtScen);
-                % obj.MCparam.abx(obj.MCparam.bx>0) = obj.MCparam.ax(obj.MCparam.bx>0)./obj.MCparam.bx(obj.MCparam.bx>0);
-                obj.MCparam.abx{:}(obj.MCparam.bx{:}>0) = arrayfun(@(scen) obj.MCparam.ax{scen}(obj.MCparam.bx{scen}>0)./obj.MCparam.bx{scen}(obj.MCparam.bx{scen}>0), 1:obj.MCparam.numOfCtScen,'UniformOutput',false);
+                [obj.MCparam.ax,obj.MCparam.bx] = matRad_getPhotonLQMParameters(obj.cstDoseGrid,prod(ct.cubeDim),obj.VdoseGrid);
+                obj.MCparam.abx = arrayfun(@(scen) zeros(size(obj.MCparam.bx{scen})), 1:obj.MCparam.numOfCtScen, 'UniformOutput',false);
+                for scen=1:obj.MCparam.numOfCtScen
+                    obj.MCparam.abx{scen}(obj.MCparam.bx{scen}>0) = obj.MCparam.ax{scen}(obj.MCparam.bx{scen}>0)./obj.MCparam.bx{scen}(obj.MCparam.bx{scen}>0);
+                end
             end
 
             % fill in bixels, rays and beams in case of dij calculation or external calculation
@@ -361,6 +364,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 obj.MCparam = load([folder filesep 'MCparam.mat'],'MCparam');
                 obj.MCparam = obj.MCparam.MCparam;
             end
+
 
             % Read out all TOPAS fields
             topasCubes = obj.readTopasCubes(folder);
@@ -501,9 +505,12 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Get photon parameters for RBExDose calculation
             if this.calcBioDose
                 this.scorer.RBE = true;
-                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(cst,dij.doseGrid.numOfVoxels,this.VdoseGrid);
-                %dij.abx(dij.bx>0) = dij.ax(dij.bx>0)./dij.bx(dij.bx>0);
-                dij.abx{:}(dij.bx{:}>0) = arrayfun(@(scen) dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0), 1:numel(dij.ax), 'UniformOutput',false);
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+                
+                dij.abx = arrayfun(@(scen) zeros(size(dij.bx{scen})), 1:numel(dij.ax), 'UniformOutput',false);
+                for scen=1:numel(dij.ax)
+                    dij.abx{scen}(dij.bx{scen}>0) = dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0);
+                end
             end
 
             % save current directory to revert back to later
@@ -1301,20 +1308,18 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 % Begin writing biological scorer components: cell lines
                 switch obj.radiationMode
                     case 'protons'
+                        obj.bioParameters.cellLineName = 'CellLineGeneric';
                         fprintf(fID,'\n### Biological Parameters ###\n');
-                        fprintf(fID,'sv:Sc/CellLines = 1 "CellLineGeneric"\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/Alphax 		= Sc/AlphaX /Gy\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/Betax 		= Sc/BetaX /Gy2\n');
-                        fprintf(fID,'d:Sc/CellLineGeneric/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n');
+                        fprintf(fID,'d:Sc/%s/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n', obj.bioParameters.cellLineName);
                     case {'carbon','helium'}
-                        fprintf(fID,'\n### Biological Parameters ###\n');
-                        fprintf(fID,'sv:Sc/CellLines = 1 "CellGeneric_abR2"\n');
-                        fprintf(fID,'d:Sc/CellGeneric_abR2/Alphax = Sc/AlphaX /Gy\n');
-                        fprintf(fID,'d:Sc/CellGeneric_abR2/Betax = Sc/BetaX /Gy2\n\n');
-                        % fprintf(fID,'d:Sc/CellGeneric_abR2/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n');
+                        obj.bioParameters.cellLineName = 'CellLineGeneric_abR2';
                     otherwise
                         matRad_cfg.dispError([obj.radiationMode ' not implemented']);
                 end
+
+                fprintf(fID,'sv:Sc/CellLines = 1 "%s"\n',       obj.bioParameters.cellLineName);
+                fprintf(fID,'d:Sc/%s/Alphax = Sc/AlphaX /Gy\n', obj.bioParameters.cellLineName);
+                fprintf(fID,'d:Sc/%s/Betax = Sc/BetaX /Gy2\n\n',obj.bioParameters.cellLineName);
 
                 % write biological scorer components: dose parameters
                 matRad_cfg.dispDebug('Writing Biologial Scorer components.\n');
@@ -1328,7 +1333,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
 
                 if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
-                    obj.writeGenericRBEtable(fID);
+                    obj.writeGenericRBEtable(fID, obj.bioParameters.cellLineName);
                 end
                 % Update MCparam.tallies with processed scorer
                 for i = 1:length(obj.scorer.RBE_model)
@@ -1462,12 +1467,12 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             end
         end
 
-        function writeGenericRBEtable(this,fID)
+        function writeGenericRBEtable(this,fID, cellLineName)
 
             matRad_cfg = MatRad_Config.instance();
 
             RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX);
-            includedIons = this.bioModel.tableFragmentIndexes;
+            includedIons = this.bioModel.fragmentIndexesInTable;
             
             ionData = [];
             for i=includedIons
@@ -1503,19 +1508,19 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             kineticEnergies = RBEtableData.energies;
 
             % Print file lines
-            fprintf(fID, 'sv:Sc/CellLineGeneric/HCP/ParticleName 		= %d', numel(ionData));
+            fprintf(fID, 'sv:Sc/%s/HCP/ParticleName 		= %d',cellLineName, numel(ionData));
             arrayfun(@(ion) fprintf(fID, ' "%s"', ion.Name), ionData);
 
-            fprintf(fID, '\niv:Sc/CellLineGeneric/HCP/ParticleZ    		= %d', numel(ionData));
+            fprintf(fID, '\niv:Sc/%s/HCP/ParticleZ    		= %d',cellLineName, numel(ionData));
             arrayfun(@(ion) fprintf(fID, ' %d', ion.Z), ionData);
 
-            fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/KineticEnergyPerNucleon 	= %d', numel(kineticEnergies));
+            fprintf(fID, '\ndv:Sc/%s/HCP/KineticEnergyPerNucleon 	= %d',cellLineName, numel(kineticEnergies));
             arrayfun(@(energy) fprintf(fID, ' %3.4f', energy), kineticEnergies);
             fprintf(fID, ' MeV');
 
             % Alpha
             for i=1:numel(ionData)
-                fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/%s/Alpha 	= %d', ionData(i).Name, numel(kineticEnergies));
+                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Alpha 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
                 arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Alpha);
                 fprintf(fID, ' /Gy\n');
                 
@@ -1524,7 +1529,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
 
             % Beta
             for i=1:numel(ionData)
-                fprintf(fID, '\ndv:Sc/CellLineGeneric/HCP/%s/Beta 	= %d', ionData(i).Name, numel(kineticEnergies));
+                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Beta 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
                 arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Beta);
                 fprintf(fID, ' /Gy2\n');
             end
