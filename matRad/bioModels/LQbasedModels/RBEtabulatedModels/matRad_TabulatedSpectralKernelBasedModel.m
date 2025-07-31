@@ -71,7 +71,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % Collect the spectra from the bixel, for each fragment
             % For now assume all fragments have same energy.
             % spectraEnergies = bixel.baseData.spectra.Fluence.energyBin;
-            spectraEnergies = bixel.baseData.Fluence.energyBin;
+            spectraEnergies = bixel.baseData.Fluence.spectra.energyBin;
 
             % This is to catch situation in which binning in base data
             % starts from zero instead of center of energy bin. This works
@@ -98,15 +98,21 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             alphaE = arrayfun(@(fragment) horzcat(curTissueAlphaE{:,fragment}), [1:numel(this.fragmentIndexesInTable)], 'UniformOutput',false);
             betaE  = arrayfun(@(fragment) horzcat(curTissueBetaE{:,fragment}),  [1:numel(this.fragmentIndexesInTable)], 'UniformOutput',false);
 
-            % alphaE = cell2struct(alphaE, this.fragmentIndexesInTable, 2);
-            % betaE  = cell2struct(betaE,  this.fragmentIndexesInTable, 2);
+            for i=1:numel(this.fragmentIndexesInBaseData)
+                fragIdx = this.fragmentIndexesInBaseData(i);
+                meanE{i} = spectraEnergies*bixel.baseData.Fluence.spectra(fragIdx).fluenceSpectrum(:,2:end);
+                dE{i} = meanE{i}(2:end) - meanE{i}(1:end-1);
+                dx{i} = (bixel.baseData.depths(3:end) - bixel.baseData.depths(2:end-1))';
+                dEdX{i} = interp1(meanE{i}(1:end-1), -dE{i}./dx{i}, spectraEnergies, 'spline', 'extrap');
+            end
 
             % Get the spectra kernels to be used (one for each fragment).
-            bixelSpectra = arrayfun(@(fragmentIdx) squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.fragmentIndexesInBaseData, 'UniformOutput',false);
-           
+            % bixelSpectra = arrayfun(@(fragmentIdx) squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.fragmentIndexesInBaseData, 'UniformOutput',false);
+            fluenceBixelSpectra = arrayfun(@(fragmentIdx) squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.fragmentIndexesInBaseData, 'UniformOutput',false);
+            bixelSpectra = arrayfun(@(fragmentIdx) fluenceBixelSpectra{fragmentIdx}.*dEdX{fragmentIdx},1:numel(fluenceBixelSpectra), 'UniformOutput',false);
+
             % Get normalization for each fragment. This is sum over
             % energies
-            % spectraFragmentDenominator = cellfun(@(fragment) sum(bixelSpectra.(fragment),2),this.fragmentIndexesInTable, 'UniformOutput',false);
             spectraFragmentDenominator = cellfun(@(fragmentSpectra) sum(fragmentSpectra,2),bixelSpectra, 'UniformOutput',false);
 
             % Get total normalization by summing over the fragments
