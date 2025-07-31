@@ -57,24 +57,26 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             % fragment and tissue class
             
             fragmentRBEtable = this.selectDataTableForFragment(fragment,tissueClass);
+            
+            alphaE = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.alpha, interpEnergies{1,fragment});
+            betaE  = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.beta,  interpEnergies{1,fragment});
+           
+            
 
-            alphaE = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.alpha, interpEnergies);
-            betaE  = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.beta,  interpEnergies);
-
-            if min(fragmentRBEtable.energies(:)) > min(interpEnergies(:))
+            if min(fragmentRBEtable.energies(:)) > min(interpEnergies{1,fragment}(:))
                 %matRad_cfg = MatRad_Config.instance();
                 % Switch off for now
                 %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
-                alphaE(interpEnergies < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
-                betaE(interpEnergies < min(fragmentRBEtable.energies))  = fragmentRBEtable.beta(1,1);
+                alphaE(interpEnergies{1,fragment} < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
+                betaE(interpEnergies{1,fragment} < min(fragmentRBEtable.energies))  = fragmentRBEtable.beta(1,1);
             end
             
-            if max(fragmentRBEtable.energies(:)) < max(interpEnergies(:))
+            if max(fragmentRBEtable.energies(:)) < max(interpEnergies{1,fragment}(:))
                 %matRad_cfg = MatRad_Config.instance();
                 % Switch off for now
                 %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
-                alphaE(interpEnergies > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
-                betaE(interpEnergies > max(fragmentRBEtable.energies))  = fragmentRBEtable.beta(end,1);
+                alphaE(interpEnergies{1,fragment} > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
+                betaE(interpEnergies{1,fragment} > max(fragmentRBEtable.energies))  = fragmentRBEtable.beta(end,1);
             end
 
 
@@ -154,6 +156,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             fragmentRBEtable.alpha    = this.RBEtable.data(tissueClass).alpha(:,fragment);
             fragmentRBEtable.beta     = this.RBEtable.data(tissueClass).beta(:,fragment);
             fragmentRBEtable.energies = this.RBEtable.data(tissueClass).energies.*this.RBEtable.data(tissueClass).includedIons(fragment).A; % RBEtable should contain energy per nucleon
+            
          
         end
 
@@ -317,12 +320,14 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                         end
                     end
                 end
-
-                if isempty(currBaseDataIndex)
+                   
+                if isempty(currBaseDataIndex) && ~strcmp(machine.meta.radiationMode, 'protons')
                     matRad_cfg.dispError('One or more fragments included in the RBE table are not available in the base data kernel.');
                 end
-
-                fragmentIndexesInBaseData = [fragmentIndexesInBaseData, currBaseDataIndex];
+                
+                if ~isempty(currBaseDataIndex)
+                    fragmentIndexesInBaseData = [fragmentIndexesInBaseData, currBaseDataIndex];
+                end
             
             end
 

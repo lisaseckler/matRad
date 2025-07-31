@@ -31,7 +31,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
         hlut;
         useGivenEqDensityCube;      % Use the given density cube ct.cube and omit conversion from cubeHU.
         calcLET = false;
-        calcBioDose = false;
+        calcBioDose = true;
         prescribedDose = [];
 
 
@@ -152,6 +152,11 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             'Scorer_RBE_WED','TOPAS_scorer_doseRBE_Wedenberg.txt.in',...
             'Scorer_RBE_MCN','TOPAS_scorer_doseRBE_McNamara.txt.in', ...
             'Scorer_RBE_TAB', 'TOPAS_scorer_doseRBE_GenericRBETable.txt.in',...
+            'Scorer_RBE_Tabulated', 'TOPAS_scorer_doseRBE_tabulatedRBE.txt.in',...
+            'Scorer_RBE_LEMI', 'TOPAS_scorer_doseRBE_LEMI.txt.in',...
+            'Scorer_RBE_LEMII', 'TOPAS_scorer_doseRBE_LEMII.txt.in',...
+            'Scorer_RBE_LEMIII', 'TOPAS_scorer_doseRBE_LEMIII.txt.in',...
+            'Scorer_RBE_MKM', 'TOPAS_scorer_doseRBE_MKM.txt.in',...
             ... %PhaseSpace Source
             'phaseSpaceSourcePhotons' ,'VarianClinaciX_6MV_20x20_aboveMLC_w2' );
        
@@ -205,7 +210,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             end
         end
 
-        function writeAllFiles(obj,ct,cst,stf,machine,w)
+        function writeAllFiles(obj,ct,cst,stf,machine,w) % here we can add the value for alphaX = 0.1
             % constructor to write all TOPAS fils for local or external simulation
             %
             % call
@@ -227,6 +232,11 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             if isempty(obj.radiationMode)
                 obj.radiationMode = machine.meta.radiationMode;
             end
+
+            % Create topas scorer file for RBEtable
+            % if ~isempty(obj.bioModel.RBEtable)
+            %     matRad_buildTOPASRBEscorer(obj,value);
+            % end
 
             % Set correct RBE scorer parameters
             if obj.scorer.RBE
@@ -446,7 +456,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
     end
 
     methods (Access = protected)
-        function dij = calcDose(this,ct,cst,stf)
+        function dij = calcDose(this,ct,cst,stf) % here we can add the value for alphaX = 0.1
             % Instance of MatRad_Config class
             matRad_cfg = MatRad_Config.instance();
 
@@ -505,7 +515,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Get photon parameters for RBExDose calculation
             if this.calcBioDose
                 this.scorer.RBE = true;
-                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid); % only zeros for both
                 
                 dij.abx = arrayfun(@(scen) zeros(size(dij.bx{scen})), 1:numel(dij.ax), 'UniformOutput',false);
                 for scen=1:numel(dij.ax)
@@ -551,7 +561,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
 
                             % actually write TOPAS files
                             if this.calcDoseDirect
-                                this.writeAllFiles(this.ctR,cst,stf,this.machine,w);
+                                this.writeAllFiles(this.ctR,cst,stf,this.machine,w); % here we can add the value for alphaX = 0.1
                             else
                                 this.writeAllFiles(this.ctR,cst,stf,this.machine);
                             end
@@ -567,6 +577,9 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 % directory and the matRad_plan*.txt file can be manually called with TOPAS.
                 if strcmp(this.externalCalculation,'write')
                     matRad_cfg.dispInfo(['TOPAS simulation skipped for external calculation\nFiles have been written to: "',strrep(this.workingDir,'\','\\'),'"']);
+                    % if contains(this.scorerName,'tabulatedRBE')
+                    %    matRad_resetTOPASscorer(this);
+                    % end
                 else
                     for ctScen = 1:ct.numOfCtScen
                         for beamIx = 1:numel(stf)
@@ -1289,6 +1302,14 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_libamtrack);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lem'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEM1);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lemi'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEMI);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lemii'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEMII);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'lemiii'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEMIII);
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'mkm'))
+                                fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_MKM);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB); 
                             else
@@ -1353,7 +1374,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     obj.scorer.LET = true;
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'Wedenberg';
-                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemi')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemiii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'mkm')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'tabulated';
                 end
