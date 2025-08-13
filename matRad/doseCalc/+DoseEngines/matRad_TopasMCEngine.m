@@ -874,7 +874,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                             end
                         end
 
-                        if ~isempty(strfind(lower(tnameFile),'dose'))
+                        if ~isempty(strfind(lower(tnameFile),'dose')) && (isempty(strfind(lower(tnameFile),'doseaveragedtabulatedalphabeta')))
                             if obj.MCparam.nbRuns > 1
                                 % Calculate Standard Deviation from batches
                                 topasMeanDiff = zeros(cubeDim(1),cubeDim(2),cubeDim(3));
@@ -896,7 +896,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 topasSum.(obj.MCparam.scoreReportQuantity{i}) = correctionFactor .* topasSum.(obj.MCparam.scoreReportQuantity{i});
                             end
 
-                        elseif any(cellfun(@(teststr) ~isempty(strfind(tname,teststr)), {'alpha','beta','RBE','LET'}))
+                        elseif any(cellfun(@(teststr) ~isempty(strfind(tname,teststr)), {'alpha_','beta_','RBE','LET'}))
                             for i = 1:currNumOfQuantities
                                 topasSum.(obj.MCparam.scoreReportQuantity{i}) = topasSum.(obj.MCparam.scoreReportQuantity{i}) ./ obj.MCparam.nbRuns;
                             end
@@ -1144,7 +1144,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     for d = 1:dij.numOfBeams
                         for j = 1:numel(topasCubesTallies)
                             % Handle dose to medium and dose to water
-                            if ~isempty(strfind(lower(topasCubesTallies{j}),'dose')) && (isempty(strfind(lower(topasCubesTallies{j}),'alpha')) || isempty(strfind(lower(topasCubesTallies{j}),'beta')))
+                            if ~isempty(strfind(lower(topasCubesTallies{j}),'dose')) && (isempty(strfind(lower(topasCubesTallies{j}),'doseaveragedtabulatedalphabeta')))% || isempty(strfind(lower(topasCubesTallies{j}),'beta')))
                                 % loop through possible quantities
                                 for p = 1:length(processedQuantities)
                                     % Check if current quantity is available and write to dij
@@ -1153,13 +1153,13 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                     end
                                 end
                                 % Handle RBE-related quantities (not multiplied by sum(w)!)
-                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'alpha'))
+                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'alpha_'))
                                 modelName = strsplit(topasCubesTallies{j},'_');
                                 modelName = modelName{end};
                                 if isfield(topasCubes,[topasCubesTallies{j} '_beam' num2str(d)]) && iscell(topasCubes.([topasCubesTallies{j} '_beam' num2str(d)]))
                                     dij.(['mAlphaDose_' modelName]){ctScen}(:,d)        = reshape(topasCubes.([topasCubesTallies{j} '_beam',num2str(d)]){ctScen},[],1) .* dij.physicalDose{ctScen}(:,d);
                                 end
-                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'beta'))
+                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'beta_'))
                                 modelName = strsplit(topasCubesTallies{j},'_');
                                 modelName = modelName{end};
                                 if isfield(topasCubes,[topasCubesTallies{j} '_beam' num2str(d)]) && iscell(topasCubes.([topasCubesTallies{j} '_beam' num2str(d)]))
@@ -1329,11 +1329,11 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 % Begin writing biological scorer components: cell lines
                 switch obj.radiationMode
                     case 'protons'
-                        obj.bioParameters.cellLineName = 'CellLineGeneric';
+                        obj.bioParameters.cellLineName = 'CellGeneric';
                         fprintf(fID,'\n### Biological Parameters ###\n');
                         fprintf(fID,'d:Sc/%s/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n', obj.bioParameters.cellLineName);
                     case {'carbon','helium'}
-                        obj.bioParameters.cellLineName = 'CellLineGeneric_abR2';
+                        obj.bioParameters.cellLineName = 'CellGeneric_abR2';
                     otherwise
                         matRad_cfg.dispError([obj.radiationMode ' not implemented']);
                 end
@@ -1496,7 +1496,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             includedIons = this.bioModel.includedFragments;
             
             ionData = [];
-            kineticEnergies = RBEtableData(end).energies*RBEtableData(end).A;
+            % kineticEnergies = RBEtableData(end).energies*RBEtableData(end).A;
+            kineticEnergies = RBEtableData(end).energies;
             for i=1:numel(includedIons)
                 currIon = [];
                 currIon.Z    = includedIons(i).Z;
@@ -1522,8 +1523,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         matRad_cfg.dispError(sqprintf('Ion with Z=%d not supported', currIon.Z))
                 end
 
-                currIon.Alpha = interp1(RBEtableData(i).energies*RBEtableData(i).A, RBEtableData(i).alpha, kineticEnergies, 'linear', 'extrap');
-                currIon.Beta  = interp1(RBEtableData(i).energies*RBEtableData(i).A, RBEtableData(i).beta, kineticEnergies,'linear', 'extrap');
+                currIon.Alpha = interp1(RBEtableData(i).energies, RBEtableData(i).alpha, kineticEnergies, 'linear', 'extrap');
+                currIon.Beta  = interp1(RBEtableData(i).energies, RBEtableData(i).beta,  kineticEnergies,'linear', 'extrap');
 
                 ionData = [ionData, currIon];
             end
@@ -1544,7 +1545,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Alpha
             for i=1:numel(ionData)
                 fprintf(fID, 'dv:Sc/%s/HCP/%s/Alpha 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
-                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Alpha);
+                arrayfun(@(data) fprintf(fID, ' %3.4e', data), ionData(i).Alpha);
                 fprintf(fID, ' /Gy\n');
                 
             end
@@ -1553,7 +1554,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Beta
             for i=1:numel(ionData)
                 fprintf(fID, 'dv:Sc/%s/HCP/%s/Beta 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
-                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Beta);
+                arrayfun(@(data) fprintf(fID, ' %3.4e', data), ionData(i).Beta);
                 fprintf(fID, ' /Gy2\n');
             end
 

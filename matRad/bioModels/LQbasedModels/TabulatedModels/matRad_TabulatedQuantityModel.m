@@ -24,7 +24,7 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
                     % For now we assume that reference table is spectra
                     % table with an "energyBin" field. This need to be made
                     % consistent later on.
-                    currTable.(quantity{1}) = interp1(currTableToInterpolate.energies, currTableToInterpolate.(quantity{1}), currReferenceTable.energyBin,'linear','extrap');
+                    currTable.(quantity{1}) = interp1(currTableToInterpolate.energies, currTableToInterpolate.(quantity{1}), currReferenceTable.energyBin','linear','extrap');
                 end
                 currTable.energies = currReferenceTable.energyBin;
                 

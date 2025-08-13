@@ -69,12 +69,12 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
             end
 
         end
-
+        
         function doseAveragedKernels = computeDoseAveragedKernels(this,quantity, spectra, sp)
 
             
             % Get normalization for each fragment
-            denominator = arrayfun(@(fragmentSpectrum, fragmentSP) fragmentSpectrum.fluenceSpectrum' * fragmentSP.dEdx', spectra, sp, 'UniformOutput',false);
+            denominator = arrayfun(@(fragmentSpectrum, fragmentSP) fragmentSpectrum.fluenceSpectrum' * fragmentSP.dEdx, spectra, sp, 'UniformOutput',false);
             
             % Sum over the fragments
             denominator = sum([denominator{:}],2);
@@ -82,7 +82,7 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
             % Get the numerator for every fragment and quantity
             for quantityName=this.quantitiesToAverage
                 currentQuantity = quantityName{1};
-                numerator.(currentQuantity) = arrayfun(@(fragmentSpectrum, fragmentSP, fragQuantity) fragmentSpectrum.fluenceSpectrum' * (fragmentSP.dEdx' .* fragQuantity.(currentQuantity)), spectra, sp, quantity, 'UniformOutput',false);
+                numerator.(currentQuantity) = arrayfun(@(fragmentSpectrum, fragmentSP, fragQuantity) fragmentSpectrum.fluenceSpectrum' * (fragmentSP.dEdx .* fragQuantity.(currentQuantity)), spectra, sp, quantity, 'UniformOutput',false);
 
                 % Sum over the fragments
                 numerator.(currentQuantity) = sum(cat(3,numerator.(currentQuantity){:}),3);
