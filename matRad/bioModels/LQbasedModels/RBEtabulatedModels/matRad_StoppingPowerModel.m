@@ -74,14 +74,6 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
                 spectraEnergies{1,j} = bixel.baseData.Fluence.spectra(i).energyBin;
                 j = j+1;
             end
-
-            % This is to catch situation in which binning in base data
-            % starts from zero instead of center of energy bin. This works
-            % if bin spacing is linear. If spacing is not linear, provide
-            % an energy binning that is bin-centered.
-            % if spectraEnergies(1) == 0
-            %     spectraEnergies(1) = spectraEnergies(1) + (spectraEnergies(2)-spectraEnergies(1))/2;
-            % end
             
             % Get the tissue classes within the bixel
             bixelTissueIndexes = unique(bixel.vTissueIndex)';

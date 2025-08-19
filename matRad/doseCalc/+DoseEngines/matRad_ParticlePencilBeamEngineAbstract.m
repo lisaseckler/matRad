@@ -469,18 +469,22 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
             if isa(this.bioModel,'matRad_LQKernelBasedModel')
                 this.bioKernelQuantities = this.bioModel.kernelQuantities;
                 [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
-            elseif isa(this.bioModel,'matRad_LQRBETabulatedModel')
-                baseDataFragmentIndexes  = this.bioModel.selectBaseDataFragmentsFromMachine(this.machine);
-                this.bioKernelQuantities = this.bioModel.getBaseDataKernels(baseDataFragmentIndexes);
-                [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
-                
-                % This is only temporary
-                firstEnergies = arrayfun(@(data)data.(this.bioModel.weightBy).energyBin(1), this.machine.data);
-                
-                if any(firstEnergies == 0)
-                    matRad_cfg.dispWarning('One or more energies in the spectral kernel data have data points for energy = 0. Energy bins will be shifted to match the bin center value.');
-                end
+            % elseif isa(this.bioModel,'matRad_LQRBETabulatedModel')
+            %     baseDataFragmentIndexes  = this.bioModel.selectBaseDataFragmentsFromMachine(this.machine);
+            %     this.bioKernelQuantities = this.bioModel.getBaseDataKernels(baseDataFragmentIndexes);
+            %     [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
+            % 
+            %     % This is only temporary
+            %     firstEnergies = arrayfun(@(data)data.(this.bioModel.weightBy).energyBin(1), this.machine.data);
+            % 
+            %     if any(firstEnergies == 0)
+            %         matRad_cfg.dispWarning('One or more energies in the spectral kernel data have data points for energy = 0. Energy bins will be shifted to match the bin center value.');
+            %     end
 
+            elseif isa(this.bioModel,'matRad_TabulatedQuantityModel')
+                this.bioKernelQuantities = this.bioModel.quantitiesToAverage;
+                this.machine = this.bioModel.computeKernels(this.machine);
+                [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
             end
 
             if isa(this.bioModel,'matRad_LETbasedModels')

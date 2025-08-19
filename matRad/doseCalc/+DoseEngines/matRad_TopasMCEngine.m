@@ -874,7 +874,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                             end
                         end
 
-                        if ~isempty(strfind(lower(tnameFile),'dose'))
+                        if ~isempty(strfind(lower(tnameFile),'dose')) && (isempty(strfind(lower(tnameFile),'doseaveragedtabulatedalphabeta')))
                             if obj.MCparam.nbRuns > 1
                                 % Calculate Standard Deviation from batches
                                 topasMeanDiff = zeros(cubeDim(1),cubeDim(2),cubeDim(3));
@@ -896,7 +896,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 topasSum.(obj.MCparam.scoreReportQuantity{i}) = correctionFactor .* topasSum.(obj.MCparam.scoreReportQuantity{i});
                             end
 
-                        elseif any(cellfun(@(teststr) ~isempty(strfind(tname,teststr)), {'alpha','beta','RBE','LET'}))
+                        elseif any(cellfun(@(teststr) ~isempty(strfind(tname,teststr)), {'alpha_','beta_','RBE','LET'}))
                             for i = 1:currNumOfQuantities
                                 topasSum.(obj.MCparam.scoreReportQuantity{i}) = topasSum.(obj.MCparam.scoreReportQuantity{i}) ./ obj.MCparam.nbRuns;
                             end
@@ -1144,7 +1144,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     for d = 1:dij.numOfBeams
                         for j = 1:numel(topasCubesTallies)
                             % Handle dose to medium and dose to water
-                            if ~isempty(strfind(lower(topasCubesTallies{j}),'dose'))
+                            if ~isempty(strfind(lower(topasCubesTallies{j}),'dose')) && (isempty(strfind(lower(topasCubesTallies{j}),'doseaveragedtabulatedalphabeta')))% || isempty(strfind(lower(topasCubesTallies{j}),'beta')))
                                 % loop through possible quantities
                                 for p = 1:length(processedQuantities)
                                     % Check if current quantity is available and write to dij
@@ -1153,13 +1153,13 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                     end
                                 end
                                 % Handle RBE-related quantities (not multiplied by sum(w)!)
-                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'alpha'))
+                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'alpha_'))
                                 modelName = strsplit(topasCubesTallies{j},'_');
                                 modelName = modelName{end};
                                 if isfield(topasCubes,[topasCubesTallies{j} '_beam' num2str(d)]) && iscell(topasCubes.([topasCubesTallies{j} '_beam' num2str(d)]))
                                     dij.(['mAlphaDose_' modelName]){ctScen}(:,d)        = reshape(topasCubes.([topasCubesTallies{j} '_beam',num2str(d)]){ctScen},[],1) .* dij.physicalDose{ctScen}(:,d);
                                 end
-                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'beta'))
+                            elseif ~isempty(strfind(lower(topasCubesTallies{j}),'beta_'))
                                 modelName = strsplit(topasCubesTallies{j},'_');
                                 modelName = modelName{end};
                                 if isfield(topasCubes,[topasCubesTallies{j} '_beam' num2str(d)]) && iscell(topasCubes.([topasCubesTallies{j} '_beam' num2str(d)]))
@@ -1291,7 +1291,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_MCN);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'wed'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_WED);
-                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'doseaveragedtabulatedalphabeta'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB);                                
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
@@ -1310,7 +1310,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_LEMIII);
                             elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'mkm'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_MKM);
-                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'tab'))
+                            elseif ~isempty(strfind(lower(obj.scorer.RBE_model{i}),'doseaveragedtabulatedalphabeta'))
                                 fname = fullfile(obj.topasFolder,filesep,obj.scorerFolder,filesep,obj.infilenames.Scorer_RBE_TAB); 
                             else
                                 matRad_cfg.dispError(['Model ',obj.scorer.RBE_model{i},' not implemented for ',obj.radiationMode]);
@@ -1329,11 +1329,11 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 % Begin writing biological scorer components: cell lines
                 switch obj.radiationMode
                     case 'protons'
-                        obj.bioParameters.cellLineName = 'CellLineGeneric';
+                        obj.bioParameters.cellLineName = 'CellGeneric';
                         fprintf(fID,'\n### Biological Parameters ###\n');
                         fprintf(fID,'d:Sc/%s/AlphaBetaRatiox 	= Sc/AlphaBetaX Gy\n\n', obj.bioParameters.cellLineName);
                     case {'carbon','helium'}
-                        obj.bioParameters.cellLineName = 'CellLineGeneric_abR2';
+                        obj.bioParameters.cellLineName = 'CellGeneric_abR2';
                     otherwise
                         matRad_cfg.dispError([obj.radiationMode ' not implemented']);
                 end
@@ -1353,7 +1353,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 fprintf(fID,'d:Sc/BetaX = %.4f /Gy2\n',obj.bioParameters.BetaX);
                 fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
 
-                if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'doseaveragedtabulatedalphabeta')), obj.scorer.RBE_model))
                     obj.writeGenericRBEtable(fID, obj.bioParameters.cellLineName);
                 end
                 % Update MCparam.tallies with processed scorer
@@ -1374,14 +1374,14 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                     obj.scorer.LET = true;
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'Wedenberg';
-                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemi')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemiii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'mkm')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lem')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemi')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'lemiii')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'mkm')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'libamtrack')), obj.scorer.RBE_model)) || any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'doseaveragedtabulatedalphabeta')), obj.scorer.RBE_model))
                     obj.scorer.doseToWater = true;
                     scorerPrefix = 'tabulated';
                 end
 
                 % Write subscorer to config files
                 for s = 1:length(scorerNames)
-                    if strcmp(obj.radiationMode,'protons') && any(cellfun(@(teststr) isempty(strfind(lower(teststr),'tab')), obj.scorer.RBE_model))
+                    if strcmp(obj.radiationMode,'protons') && any(cellfun(@(teststr) isempty(strfind(lower(teststr),'doseaveragedtabulatedalphabeta')), obj.scorer.RBE_model))
                         fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_LET      = "ProtonLET"\n',scorerPrefix,scorerNames{s});
                     end
                     fprintf(fID,'s:Sc/%s%s/ReferencedSubScorer_Dose     = "Tally_DoseToWater"\n',scorerPrefix,scorerNames{s});
@@ -1493,12 +1493,14 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             matRad_cfg = MatRad_Config.instance();
 
             RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX);
-            includedIons = this.bioModel.fragmentIndexesInTable;
+            includedIons = this.bioModel.includedFragments;
             
             ionData = [];
-            for i=includedIons
+            % kineticEnergies = RBEtableData(end).energies*RBEtableData(end).A;
+            kineticEnergies = RBEtableData(end).energies;
+            for i=1:numel(includedIons)
                 currIon = [];
-                currIon.Z    = RBEtableData.includedIons(i).Z;
+                currIon.Z    = includedIons(i).Z;
 
                 switch currIon.Z
                     case 1
@@ -1521,12 +1523,12 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         matRad_cfg.dispError(sqprintf('Ion with Z=%d not supported', currIon.Z))
                 end
 
-                currIon.Alpha = RBEtableData.alpha(:,i);
-                currIon.Beta  = RBEtableData.beta(:,i);
+                currIon.Alpha = interp1(RBEtableData(i).energies, RBEtableData(i).alpha, kineticEnergies, 'linear', 'extrap');
+                currIon.Beta  = interp1(RBEtableData(i).energies, RBEtableData(i).beta,  kineticEnergies,'linear', 'extrap');
 
                 ionData = [ionData, currIon];
             end
-            kineticEnergies = RBEtableData.energies;
+            
 
             % Print file lines
             fprintf(fID, 'sv:Sc/%s/HCP/ParticleName 		= %d',cellLineName, numel(ionData));
@@ -1539,10 +1541,11 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             arrayfun(@(energy) fprintf(fID, ' %3.4f', energy), kineticEnergies);
             fprintf(fID, ' MeV');
 
+            fprintf(fID, '\n');
             % Alpha
             for i=1:numel(ionData)
-                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Alpha 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
-                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Alpha);
+                fprintf(fID, 'dv:Sc/%s/HCP/%s/Alpha 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4e', data), ionData(i).Alpha);
                 fprintf(fID, ' /Gy\n');
                 
             end
@@ -1550,8 +1553,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
 
             % Beta
             for i=1:numel(ionData)
-                fprintf(fID, '\ndv:Sc/%s/HCP/%s/Beta 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
-                arrayfun(@(data) fprintf(fID, ' %3.4f', data), ionData(i).Beta);
+                fprintf(fID, 'dv:Sc/%s/HCP/%s/Beta 	= %d',cellLineName, ionData(i).Name, numel(kineticEnergies));
+                arrayfun(@(data) fprintf(fID, ' %3.4e', data), ionData(i).Beta);
                 fprintf(fID, ' /Gy2\n');
             end
 
