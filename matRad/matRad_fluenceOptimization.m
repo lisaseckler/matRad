@@ -78,9 +78,9 @@ wOpt = optimizer.wResult;
 info = optimizer.resultInfo;
 
 try
-    resultGUI = matRad_calcCubes(wOpt,dij);
+    resultGUI = matRad_calcCubes(wOpt,dij,[],[],cst,pln);
 catch
-    matRad_cfg.dispWarning('Unable to compue calcCubes');
+    matRad_cfg.dispWarning('Unable to compute calcCubes');
 end
 resultGUI.wUnsequenced = wOpt;
 resultGUI.usedOptimizer = optimizer;

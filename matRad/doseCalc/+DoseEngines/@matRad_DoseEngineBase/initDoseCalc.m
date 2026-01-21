@@ -82,6 +82,9 @@ dij = struct();
 if matRad_ispropCompat(this.bioModel, 'RBE') && ~isnan(this.bioModel.RBE)
     dij.RBE = this.bioModel.RBE; 
 end
+% if matRad_ispropCompat(this.bioModel, 'quantityTable') && ~isempty(this.bioModel.quantityTable)
+%     dij.bioModel = this.bioModel; 
+% end
 
 %store CT grid
 dij.ctGrid.resolution = ct.resolution;

@@ -96,7 +96,9 @@ for  i = 1:size(cst,1)
                 quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
                 quantityOptimizedInstance = optiProb.BP.quantities{strcmp(quantityOptimized,quantityNames)};
                 % rescale dose parameters to biological optimization quantity if required
-                objective = quantityOptimizedInstance.setBiologicalDosePrescriptions(objective,cst{i,5}.alphaX,cst{i,5}.betaX);
+                alphaX = unique(dij.ax{1}(dij.ax{1} ~= 0));
+                betaX = unique(dij.bx{1}(dij.bx{1} ~= 0));
+                objective = quantityOptimizedInstance.setBiologicalDosePrescriptions(objective,alphaX,betaX);
                 
                 if ~exist('gGrad', 'var') || ~isfield(gGrad,quantityOptimized)
                     if isa(quantityOptimizedInstance, 'matRad_DistributionQuantity')

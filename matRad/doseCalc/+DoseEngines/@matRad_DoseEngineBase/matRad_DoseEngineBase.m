@@ -293,7 +293,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             
             for i = 1:this.multScen.totNumScen
                 scenSubIx = this.multScen.linearMask(i,:);
-                resultGUItmp = matRad_calcCubes(ones(dij.numOfBeams,1),dij,this.multScen.sub2scenIx(scenSubIx(1),scenSubIx(2),scenSubIx(3)));
+                resultGUItmp = matRad_calcCubes(ones(dij.numOfBeams,1),dij,this.multScen.sub2scenIx(scenSubIx(1),scenSubIx(2),scenSubIx(3)),[],cst,this);
                 if i == 1
                     resultGUI = resultGUItmp;
                 end
@@ -317,6 +317,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             this.selectVoxelsInScenarios    = matRad_cfg.defaults.propDoseCalc.selectVoxelsInScenarios;
         end
     end
+
     
     methods(Access  =  protected)
         
@@ -325,7 +326,8 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         % Should be called at the beginning of calcDose method.
         % Can be expanded or changed by overwriting this method and calling
         % the superclass method inside of it
-        dij = initDoseCalc(this,ct,cst,stf)   
+        
+        dij = initDoseCalc(this,ct,cst,stf);
         
         % method for finalizing the dose calculation (e.g. postprocessing
         % on dij or files

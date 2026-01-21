@@ -352,9 +352,9 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             
             this.RBEtable = this.loadRBEtable(this.RBEtableName);
 
-            this.availableAlphaInTable = [this.RBEtable.data(:).alphaX]';
-            this.availableBetaInTable  = [this.RBEtable.data(:).betaX]';
-            this.availableFragmentsInTable = [this.RBEtable.data(1).includedIons];
+            this.availableAlphaInTable = [this.RBEtable.data(:).alpha]';
+            this.availableBetaInTable  = [this.RBEtable.data(:).beta]';
+            this.availableFragmentsInTable = [this.RBEtable.data(:).Z];
 
             if ~isempty(this.includedFragments)
                 this.updateFragmentIdxInTable(this.includedFragments);
@@ -392,8 +392,8 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 A = this.getDefaultAvalueForZ(Z);
             end
 
-            availableZ = [this.RBEtable.data(1).includedIons.Z];
-            availableA = [this.RBEtable.data(1).includedIons.A];
+            availableZ = [this.RBEtable.data(:).Z];
+            availableA = [this.RBEtable.data(:).A];
 
             tmpZIdx = find(availableZ == Z);
             tmpAidx = find(availableA == A);

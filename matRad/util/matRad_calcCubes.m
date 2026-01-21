@@ -1,4 +1,4 @@
-function resultGUI = matRad_calcCubes(w,dij,scenNum,boolInterpolate)
+function resultGUI = matRad_calcCubes(w,dij,scenNum,boolInterpolate,cst,pln)
 % matRad computation of all cubes for the resultGUI struct
 % which is used as result container and for visualization in matRad's GUI
 %
@@ -141,7 +141,20 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
 
                 % Calculate RBExDose from the effect
                 resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])                 = zeros(size(resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])));
-                resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)             = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                if strcmp(cst{1,5}.bioParams.refRadiation,'photons')
+                    resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)         = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                elseif strcmp(cst{1,5}.bioParams.refRadiation,'carbon')
+                    if strcmp(class(pln.bioModel),'matRad_KernelBasedLEM')
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    elseif ~isempty(pln.bioModel.ZstarTable)
+                        dij.ac = dij.ax;
+                        dij.ac{1,1}(dij.ac{1,1}~=0) = cst{1,5}.bioParams.alphaR; % for mMKM beta remains the same
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ac{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ac{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                        %resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt((dij.ac{ctScen}(ix)./(2 .* dij.bx{ctScen}(ix))).^2 + (resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix) ./ dij.bx{ctScen}(ix))) - (dij.ac{ctScen}(ix)./(2.*dij.bx{ctScen}(ix))) .* 2.41);
+                    elseif isempty(pln.bioModel.ZstarTable)
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    end
+                end
 
                 % Divide RBExDose with the physicalDose to get the plain RBE cube
                 resultGUI.(['RBE', RBE_model{j}, beamInfo(i).suffix])                   = zeros(size(resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])));

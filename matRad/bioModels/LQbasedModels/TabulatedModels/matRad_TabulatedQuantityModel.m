@@ -12,24 +12,55 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
         function interpolatedTable = interpolateQuantityOnTables(this,referenceTable, tableToInterpolate, quantities)
 
             interpolatedTable = [];
-            for fragmentIdx = 1:numel(tableToInterpolate)
+            if isequal(numel(referenceTable),numel(tableToInterpolate))
 
-                Z = tableToInterpolate(fragmentIdx).Z;
-                A = tableToInterpolate(fragmentIdx).A;
+                for fragmentIdx = 1:numel(tableToInterpolate)
 
-                currReferenceTable       = this.extractFragmentsWithZA(Z, A, referenceTable);
-                currTableToInterpolate   = this.extractFragmentsWithZA(Z, A, tableToInterpolate);
+                    Z = tableToInterpolate(fragmentIdx).Z;
+                    A = tableToInterpolate(fragmentIdx).A;
 
-                for quantity = quantities
-                    % For now we assume that reference table is spectra
-                    % table with an "energyBin" field. This need to be made
-                    % consistent later on.
-                    currTable.(quantity{1}) = interp1(currTableToInterpolate.energies, currTableToInterpolate.(quantity{1}), currReferenceTable.energyBin','linear','extrap');
+                    currReferenceTable       = this.extractFragmentsWithZA(Z, A, referenceTable);
+                    currTableToInterpolate   = this.extractFragmentsWithZA(Z, A, tableToInterpolate);
+
+                    mask = cellfun(@(x) isfield(tableToInterpolate,x), quantities);
+
+                    for quantity = quantities(mask)
+                        % For now we assume that reference table is spectra
+                        % table with an "energyBin" field. This need to be made
+                        % consistent later on.
+                        currTable.(quantity{1}) = interp1(currTableToInterpolate.energies, currTableToInterpolate.(quantity{1}), currReferenceTable.energyBin','linear','extrap');
+                    end
+                    currTable.energies = currReferenceTable.energyBin;
+
+                    interpolatedTable = [interpolatedTable, currTable];
                 end
-                currTable.energies = currReferenceTable.energyBin;
-                
-                interpolatedTable = [interpolatedTable, currTable];
+            elseif numel(referenceTable) < numel(tableToInterpolate)
+                for fragmentIdx = 1:numel(referenceTable)
+
+                    Z = tableToInterpolate(fragmentIdx).Z;
+                    A = tableToInterpolate(fragmentIdx).A;
+
+                    currReferenceTable       = this.extractFragmentsWithZA(Z, A, referenceTable);
+                    currTableToInterpolate   = this.extractFragmentsWithZA(Z, A, tableToInterpolate);
+
+                    mask = cellfun(@(x) isfield(tableToInterpolate,x), quantities);
+
+                    for quantity = quantities(mask)
+                        % For now we assume that reference table is spectra
+                        % table with an "energyBin" field. This need to be made
+                        % consistent later on.
+                        currTable.(quantity{1}) = interp1(currTableToInterpolate.energies, currTableToInterpolate.(quantity{1}), currReferenceTable.energyBin','linear','extrap');
+                    end
+                    currTable.energies = currReferenceTable.energyBin;
+
+                    interpolatedTable = [interpolatedTable, currTable];
+                end
+            elseif numel(referenceTable) > numel(tableToInterpolate)
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispError('Not enough fragments listed in the stopping power table. Interpolation between the energies is not possible!');
             end
+
+
         end
 
         function vTissueIndex = getTissueInformation(this,machine, cstDownsampled, dij,vAlphaX, ~, VdoseGrid, VdoseGridScenIx)
@@ -37,24 +68,22 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
             matRad_cfg = MatRad_Config.instance();
 
             numOfCtScen = numel(vAlphaX);
-            
+
             tmpScenVdoseGrid = cell(numOfCtScen,1);
 
-            for s = 1:numOfCtScen            
+            for s = 1:numOfCtScen
                 tmpScenVdoseGrid{s} = VdoseGrid(VdoseGridScenIx{s});
                 vTissueIndex{s}     = zeros(size(tmpScenVdoseGrid{s},1),1);
             end
 
-            if isfield(machine.data,'alphaX') && isfield(machine.data,'betaX')
+            if isfield(machine.data,'cellLine')
                 for i = 1:size(cstDownsampled,1)
-                    % check if cst is compatiable
-                    if ~isempty(cstDownsampled{i,5}) && isfield(cstDownsampled{i,5},'alphaX') && isfield(cstDownsampled{i,5},'betaX')
-     
+                    if isfield(cstDownsampled{i,5}.bioParams,'cellLine')
+                        % check if cst is compatiable
                         % check if base data contains alphaX and betaX
                         % (should already be checked before to instantiate the model class)
-                        IdxTissue = find(ismember(machine.data(1).alphaX,cstDownsampled{i,5}.alphaX) & ...
-                            ismember(machine.data(1).betaX,cstDownsampled{i,5}.betaX));
-     
+                        IdxTissue = strcmp(machine.data(1).cellLine,cstDownsampled{i,5}.bioParams.cellLine);
+
                         % check consitency of biological baseData and cst settings
                         if ~isempty(IdxTissue)
 
@@ -66,7 +95,9 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
                         else
                             matRad_cfg.dispError('Biological base data and cst are inconsistent!');
                         end
-     
+                        % check if RBEtable contains alphaX and betaX from
+                        % cst and consistency of RBEtable and cst setting
+
                     else
                         for s = 1:numOfCtScen
                             vTissueIndex{s}(:) = 1;
@@ -74,9 +105,41 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
                         matRad_cfg.dispWarning('\tTissue type of %s was set to 1\n',cstDownsampled{i,2});
                     end
                 end
-                
+
+            elseif isfield(machine.data,'alphaX') && isfield(machine.data,'betaX')
+                for i = 1:size(cstDownsampled,1)
+                    % check if cst is compatiable
+                    if ~isempty(cstDownsampled{i,5}) && isfield(cstDownsampled{i,5},'alphaX') && isfield(cstDownsampled{i,5},'betaX')
+
+                        % check if base data contains alphaX and betaX
+                        % (should already be checked before to instantiate the model class)
+                        IdxTissue = find(ismember(machine.data(1).alphaX,cstDownsampled{i,5}.alphaX) & ...
+                            ismember(machine.data(1).betaX,cstDownsampled{i,5}.betaX));
+
+                        % check consitency of biological baseData and cst settings
+                        if ~isempty(IdxTissue)
+
+                            for s = 1:numOfCtScen
+                                tmpScenVdoseGrid = VdoseGrid(VdoseGridScenIx{s});
+                                isInVdoseGrid = ismember(tmpScenVdoseGrid,cstDownsampled{i,4}{s});
+                                vTissueIndex{s}(isInVdoseGrid) = IdxTissue;
+                            end
+                        else
+                            matRad_cfg.dispError('Biological base data and cst are inconsistent!');
+                        end
+                        % check if RBEtable contains alphaX and betaX from
+                        % cst and consistency of RBEtable and cst setting
+
+                    else
+                        for s = 1:numOfCtScen
+                            vTissueIndex{s}(:) = 1;
+                        end
+                        matRad_cfg.dispWarning('\tTissue type of %s was set to 1\n',cstDownsampled{i,2});
+                    end
+                end
+
                 matRad_cfg.dispInfo('done.\n');
-             else
+            else
                 matRad_cfg.dispError('Base data is missing alphaX and/or betaX!');
             end
 

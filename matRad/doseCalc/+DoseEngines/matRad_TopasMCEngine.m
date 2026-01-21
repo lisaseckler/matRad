@@ -253,9 +253,22 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 end
 
                 % Get alpha beta parameters from bioParam struct
-                if isfield(obj.bioParameters, 'tissuseAlphaX')
-                    obj.bioParameters.AlphaX = obj.bioModel.tissueAlphaX(1);
-                    obj.bioParameters.BetaX  = obj.bioModel.tissueBetaX(1);
+                if strcmp(class(obj.bioModel),'matRad_KernelBasedLEM')
+                    if isfield(machine.data(1),'alphaX')
+                        obj.bioParameters.AlphaX = machine.data(1).alphaX;
+                        obj.bioParameters.BetaX  = machine.data(1).betaX;
+                    end
+                    if isfield(machine.data(1),'cellLine')
+                        obj.bioParameters.cellLine = machine.data(1).cellLine;
+                    end
+                elseif strcmp(class(obj.bioModel),'matRad_TabulatedAlphaBetaModel')
+                    if isfield(obj.bioModel.quantityTable.meta.modelParameters, 'alphaX')
+                        obj.bioParameters.AlphaX = obj.bioModel.quantityTable.meta.modelParameters.alphaX(1);
+                        obj.bioParameters.BetaX  = obj.bioModel.quantityTable.meta.modelParameters.betaX(1);
+                    end
+                    if isfield(obj.bioModel.quantityTable.meta.modelParameters, 'cellLine')
+                        obj.bioParameters.cellLine = obj.bioModel.quantityTable.meta.modelParameters.cellLine;
+                    end
                 end
                 if numel(obj.bioParameters.AlphaX)>1
                     matRad_cfg.dispWarning('!!! Only a unique alpha/beta ratio supported at the moment. Found multiple, only the first one will be used !!!!');
@@ -515,8 +528,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             % Get photon parameters for RBExDose calculation
             if this.calcBioDose
                 this.scorer.RBE = true;
-                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid); % only zeros for both
-                
+                %[dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid); % only zeros for both
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
                 dij.abx = arrayfun(@(scen) zeros(size(dij.bx{scen})), 1:numel(dij.ax), 'UniformOutput',false);
                 for scen=1:numel(dij.ax)
                     dij.abx{scen}(dij.bx{scen}>0) = dij.ax{scen}(dij.bx{scen}>0)./dij.bx{scen}(dij.bx{scen}>0);
@@ -1492,7 +1505,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
 
             matRad_cfg = MatRad_Config.instance();
 
-            RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX);
+            RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX, this.bioParameters.cellLine);
             includedIons = this.bioModel.includedFragments;
             
             ionData = [];

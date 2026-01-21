@@ -7,8 +7,11 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
     properties
         stoppingPowerTable;
         stoppingPowerTableName;
+        ZstarTable;
+        ZstarTableName;
         quantityTable;
         quantityTableName;
+        ChosenCellType;
     end
 
     methods
@@ -78,9 +81,10 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
             
             % Sum over the fragments
             denominator = sum([denominator{:}],2);
-
+            
+            mask = cellfun(@(x) isfield(quantity,x), this.quantitiesToAverage); 
             % Get the numerator for every fragment and quantity
-            for quantityName=this.quantitiesToAverage
+            for quantityName = this.quantitiesToAverage(mask)
                 currentQuantity = quantityName{1};
                 numerator.(currentQuantity) = arrayfun(@(fragmentSpectrum, fragmentSP, fragQuantity) fragmentSpectrum.fluenceSpectrum' * (fragmentSP.dEdx .* fragQuantity.(currentQuantity)), spectra, sp, quantity, 'UniformOutput',false);
 
@@ -94,22 +98,34 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
 
         end
 
-         function outQuantity = interpolateQuantityOnSpectra(this, spectra)
-
+        function outQuantity = interpolateQuantityOnSpectra(this, spectra)
             outQuantity = [];
-            fTable = this.getTable(this.includedFragments);
-            outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+            if ~isempty(this.quantityTableName) && isempty(this.ZstarTableName)
+                fTable = this.getTable(this.includedFragments);
+                outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+            elseif isempty(this.quantityTableName) && ~isempty(this.ZstarTableName)
+                zTable = this.getZstarTable(this.includedFragments);
+                outQuantity = this.interpolateQuantityOnTables(spectra, zTable, this.quantitiesInTable);
+            elseif ~isempty(this.quantityTableName) || ~isempty(this.ZstarTableName)
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispWarning('You selected a RBE table and a Zstar table. Both is not possible. Automatically the RBE table is chosen.');
+                fTable = this.getTable(this.includedFragments);
+                outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+            else
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispError('You did not select a RBE table and also not a Zstar table. Please make sure to choose one.');
 
-         end
+            end
+
+        end
 
          function table = getTable(this, fragments)
 
             
-             if isempty(this.quantityTable)
-                this.quantityTable = this.loadTable(this.quantityTableName);
-            end
-
-            table = this.extractFragmentsWithZA([fragments.Z], [fragments.A], this.quantityTable.data);
+             if isempty(this.quantityTable) && ~isempty(this.quantityTableName)
+                    this.quantityTable = this.loadTable(this.quantityTableName);
+             end
+             table = this.extractFragmentsWithZA([fragments.Z], [fragments.A], this.quantityTable.data);
 
         end
 
@@ -125,6 +141,21 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
             if numel(spTable) ~= numel(fragments)
                 matRad_cfg = MatRad_Config.instance();
                 matRad_cfg.dispError('At least one requested fragment is not available in the stopping power table');
+            end
+        end
+
+        function ZstarTable = getZstarTable(this, fragments)
+
+            if isempty(this.ZstarTable)
+                this.ZstarTable = this.loadZstarTable(this.ZstarTableName);
+            end
+
+            ZstarTable = this.extractFragmentsWithZA([fragments.Z], [fragments.A], this.ZstarTable.data);
+
+            % TODO: Check that all fragments got out
+            if numel(ZstarTable) ~= numel(fragments)
+                matRad_cfg = MatRad_Config.instance();
+                matRad_cfg.dispError('At least one requested fragment is not available in the Zstar table');
             end
         end
 
@@ -162,6 +193,33 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
 
             stoppingPowerTable = SPtable;
         end
+
+        function ZstarTable = loadZstarTable(fileName)
+
+            matRad_cfg = MatRad_Config.instance();
+
+            if isempty(fileName)
+                matRad_cfg.dispError('How am I supposed to compute the effect with zstar if you don''t give me a Zstar table!?\n Please set the ZstarTableName.');
+            end
+
+            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','Ztables'),...    % default matrad folder
+                fullfile(matRad_cfg.primaryUserFolder, 'Ztables')};             % user defined RBE table
+
+ 
+            try
+                load(fullfile(searchPath{1}, [fileName, '.mat']), 'Ztable');
+            catch
+                try
+                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'Ztable');
+
+                catch
+                    matRad_cfg.dispError('Cannot find ZTable: %s', fileName);
+                end
+            end
+
+            ZstarTable = Ztable;
+        end
+
 
     end
 end

@@ -2,11 +2,13 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
 
     properties (Constant)
         model      = 'doseAveragedTabulatedAlphaBeta'
-        quantitiesToAverage = {'alpha', 'sqrtBeta'};
+        quantitiesToAverage = {'alpha', 'sqrtBeta', 'zs'};
 
-        quantitiesInTable = {'alpha', 'beta'};
+        quantitiesInTable = {'alpha', 'beta', 'zs'};
         requiredQuantities = {'Fluence'};
         possibleRadiationModes = {'protons', 'carbon', 'helium'};
+
+        cellType = ["HSG","V79","CHO"];
     
     end
 
@@ -23,14 +25,31 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             bixel.sqrtBeta = NaN*ones(numel(bixel.radDepths),1);
             % Assume the kernels for multiple quantities for the same model
             % have the same dimension
-            numOfTissueClass = size(bixel.baseData.(this.quantitiesToAverage{1}),2);
+            if ~isempty(this.quantityTable) && isempty(this.ZstarTable)
+                if ~isfield(this.quantityTable,'zs')
+                    correctedQuantities = this.quantitiesToAverage;
+                    correctedQuantities(strcmp(correctedQuantities,'zs')) = [];
+                end
+            else
+                if ~isfield(this.ZstarTable,'alpha') && ~isfield(this.ZstarTable,'beta')
+                    correctedQuantities = this.quantitiesToAverage;
+                    correctedQuantities(strcmp(correctedQuantities,'alpha')) = [];
+                    correctedQuantities(strcmp(correctedQuantities,'sqrtBeta')) = [];
+                end
+            end
+
+            numOfTissueClass = size(bixel.baseData.(correctedQuantities{1}),2);
             
             for i = 1:numOfTissueClass
                 mask = bixel.vTissueIndex == i;
   
                 if any(mask)
-                    for quantityName = this.quantitiesToAverage
+                    
+                    for quantityName = correctedQuantities
                         bixel.(quantityName{1})(mask) = kernels.(quantityName{1})(mask,i);
+                        if ismember('zs',quantityName)
+                            bixel.beta(:) = this.ZstarTable.meta.modelParameters.betaX;
+                        end
                     end
                 end
             end       
@@ -38,20 +57,29 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
 
         function outQuantity = interpolateQuantityOnSpectra(this, spectra)
             outQuantity = interpolateQuantityOnSpectra@matRad_TabulatedDoseAveragedKernelModel(this,spectra);
-
-            for i=1:numel(outQuantity)
-                outQuantity(i).sqrtBeta = sqrt(outQuantity(i).beta); 
+            if ~isempty(this.quantityTable)
+                for i=1:numel(outQuantity)
+                    outQuantity(i).sqrtBeta = sqrt(outQuantity(i).beta);
+                end
             end
         end
 
         function doseAveragedKernels = computeDoseAveragedKernels(this,quantity, spectra, sp)
             doseAveragedKernels = computeDoseAveragedKernels@matRad_TabulatedDoseAveragedKernelModel(this,quantity, spectra, sp);
-
-            doseAveragedKernels.alphaX = this.quantityTable.meta.alphaX;
-            doseAveragedKernels.betaX  = this.quantityTable.meta.betaX;
+            if ~isempty(this.quantityTable)
+                if isfield(this.quantityTable.meta.modelParameters,'cellLine')
+                    doseAveragedKernels.cellLine = this.quantityTable.meta.modelParameters.cellLine;
+                elseif isfield(this.quantityTable.data,'cellLine')
+                    doseAveragedKernels.cellLine = this.quantityTable.data(1).cellLine;
+                end
+            elseif ~isempty(this.ZstarTable)
+                 if isfield(this.ZstarTable.meta.modelParameters,'cellLine')
+                    doseAveragedKernels.cellLine = this.ZstarTable.meta.modelParameters.cellLine;
+                 end
+            end
         end
 
-        function tableData = getTableDataForAlphaBeta(this, alphaX, betaX)
+        function tableData = getTableDataForAlphaBeta(this, alphaX, betaX,cellLine)
             % Scroll the RBE table and check if the requested alpha beta
             % ratio is available
 
@@ -59,7 +87,7 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             if isempty(this.quantityTable)
                 matRad_cfg = MatRad_Config.instance();
                 matRad_cfg.dispWarning('RBEtable not found');
-            else
+            elseif isfield(this.quantityTable.meta,'alphaX') && isfield(this.quantityTable.meta,'betaX')
                 for i=1:numel(this.quantityTable.meta.alphaX)
                     if (this.quantityTable.meta.alphaX(i) == alphaX) && (this.quantityTable.meta.betaX(i) == betaX)
                         tableData = this.extractFragmentsWithZA([this.includedFragments.Z], [this.includedFragments.A], this.quantityTable.data);
@@ -75,6 +103,18 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
                 if isempty(tableData)
                     matRad_cfg = MatRad_Config.instance();
                     matRad_cfg.dispWarning(sprintf('No match found for alpha/beta = %f/%f in RBE table', alphaX, betaX));                    
+                end
+            elseif isfield(this.quantityTable.meta.modelParameters,'cellLine')
+                for i=1:numel(this.quantityTable.meta.modelParameters.cellLine)
+                    if (this.quantityTable.meta.modelParameters.cellLine(i) == cellLine)
+                        tableData = this.extractFragmentsWithZA([this.includedFragments.Z], [this.includedFragments.A], this.quantityTable.data);
+                         
+                        for j=1:numel(tableData)
+                            tableData(j).cellLine = cellLine(:,i);
+                        end
+
+                        continue;
+                    end
                 end
             end
         end

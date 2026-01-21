@@ -247,6 +247,18 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
             X = structfun(@(v) matRad_interp1(depths,v,bixel.radDepths(:),'nearest'),X,'UniformOutput',false); %Extrapolate to zero?
 
             if ~isempty(this.bioKernelQuantities)
+                if strcmp(class(this.bioModel),'matRad_KernelBasedLEM')
+ 
+                elseif ~isempty(this.bioModel.quantityTable) && isempty(this.bioModel.ZstarTable)
+                    if ~isfield(this.bioModel.quantityTable.data,'zs')
+                        this.bioKernelQuantities(strcmp(this.bioKernelQuantities,'zs')) = [];
+                    end
+                elseif ~isempty(this.bioModel.ZstarTable) && isempty(this.bioModel.quantityTable)
+                    if ~isfield(this.bioModel.ZstarTable.data,'alpha') && ~isfield(this.bioModel.ZstarTable.data,'beta')
+                        this.bioKernelQuantities(strcmp(this.bioKernelQuantities,'alpha')) = [];
+                        this.bioKernelQuantities(strcmp(this.bioKernelQuantities,'sqrtBeta')) = [];
+                    end
+                end
                 for i = 1:numel(this.bioKernelQuantities)
                     tmpKernel = eval(sprintf('baseData.%s', this.bioKernelQuantities{i}));
                     if size(tmpKernel,1) ~= numel(depths)
@@ -453,37 +465,89 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
             numOfCtScen = numel(this.VdoseGridScenIx);
            
             tmpScenVdoseGrid = cell(numOfCtScen,1);
-
-            [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);  
-
-            for s = 1:numOfCtScen            
-                tmpScenVdoseGrid{s} = this.VdoseGrid(this.VdoseGridScenIx{s});
-                % retrieve photon LQM parameter for the current dose grid voxels
-
-                % vAlphaX and vBetaX for parameters in VdoseGrid
-                this.vAlphaX{s}         = dij.ax{s}(tmpScenVdoseGrid{s});
-                this.vBetaX{s}          = dij.bx{s}(tmpScenVdoseGrid{s});
-                this.vTissueIndex{s}    = zeros(size(tmpScenVdoseGrid{s},1),1);
-            end
            
             if isa(this.bioModel,'matRad_LQKernelBasedModel')
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+
+                for s = 1:numOfCtScen
+                    tmpScenVdoseGrid{s} = this.VdoseGrid(this.VdoseGridScenIx{s});
+                    % retrieve photon LQM parameter for the current dose grid voxels
+
+                    % vAlphaX and vBetaX for parameters in VdoseGrid
+                    this.vAlphaX{s}         = dij.ax{s}(tmpScenVdoseGrid{s});
+                    this.vBetaX{s}          = dij.bx{s}(tmpScenVdoseGrid{s});
+                    this.vTissueIndex{s}    = zeros(size(tmpScenVdoseGrid{s},1),1);
+                end
+
                 this.bioKernelQuantities = this.bioModel.kernelQuantities;
                 [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
-            % elseif isa(this.bioModel,'matRad_LQRBETabulatedModel')
-            %     baseDataFragmentIndexes  = this.bioModel.selectBaseDataFragmentsFromMachine(this.machine);
-            %     this.bioKernelQuantities = this.bioModel.getBaseDataKernels(baseDataFragmentIndexes);
-            %     [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
-            % 
-            %     % This is only temporary
-            %     firstEnergies = arrayfun(@(data)data.(this.bioModel.weightBy).energyBin(1), this.machine.data);
-            % 
-            %     if any(firstEnergies == 0)
-            %         matRad_cfg.dispWarning('One or more energies in the spectral kernel data have data points for energy = 0. Energy bins will be shifted to match the bin center value.');
-            %     end
+                % elseif isa(this.bioModel,'matRad_LQRBETabulatedModel')
+                %     baseDataFragmentIndexes  = this.bioModel.selectBaseDataFragmentsFromMachine(this.machine);
+                %     this.bioKernelQuantities = this.bioModel.getBaseDataKernels(baseDataFragmentIndexes);
+                %     [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
+                %
+                %     % This is only temporary
+                %     firstEnergies = arrayfun(@(data)data.(this.bioModel.weightBy).energyBin(1), this.machine.data);
+                %
+                %     if any(firstEnergies == 0)
+                %         matRad_cfg.dispWarning('One or more energies in the spectral kernel data have data points for energy = 0. Energy bins will be shifted to match the bin center value.');
+                %     end
 
             elseif isa(this.bioModel,'matRad_TabulatedQuantityModel')
                 this.bioKernelQuantities = this.bioModel.quantitiesToAverage;
                 this.machine = this.bioModel.computeKernels(this.machine);
+                
+                for i = 1:size(this.cstDoseGrid,1)
+                    if ~isempty(this.bioModel.quantityTable)
+                        if isfield(this.cstDoseGrid{i,5}.bioParams,'cellLine')
+                            dij.cellLine = this.cstDoseGrid{i,5}.bioParams.cellLine;
+                            %if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.cellType)
+                                if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.quantityTable.meta.modelParameters.cellLine)
+                                    matRad_cf.dispError('You selected a cell line that is not the one in your RBEtable. Please select one that fits.')
+                                end
+                            %end
+                        % elseif isfield(this.cstDoseGrid{i,5},'alphaX') && isfield(this.cstDoseGrid{i,5},'betaX') && isfield(this.bioModel.quantityTable.meta, 'alphaX') && isfield(this.bioModel.quantityTable.meta,'betaX')
+                        %     if ~ismember(this.cstDoseGrid{i,5}.alphaX,this.bioModel.quantityTable.meta.alphaX) && ~ismember(this.cstDoseGrid{i,5}.betaX,this.bioModel.quantityTable.meta.betaX)
+                        %         matRad_cf.dispError('You selected alphaX and betaX that are not consistent with your chosen bio model. Please choose a defined cellLine: HSG, V79 or CHO or set your alphaX, betaX or your specific cellLine yourself in cst{i,5}.')
+                        %     end
+                        else
+                            % default cellLine
+                            matRad_cfg.dispInfo('No cellLine is found. The default cellLine "HSG" is used.')
+                            this.cstDoseGrid{i,5}.bioParams.cellLine = "HSG";
+                        end
+                    elseif ~isempty(this.bioModel.ZstarTable)
+                        if isfield(this.cstDoseGrid{i,5}.bioParams,'cellLine')
+                            dij.cellLine = this.cstDoseGrid{i,5}.bioParams.cellLine;
+                            %if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.cellType)
+                                if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.ZstarTable.meta.modelParameters.cellLine)
+                                    matRad_cf.dispError('You selected a cell line that is not the one in your RBEtable. Please select one that fits.')
+                                end
+                            %end
+                        % elseif isfield(this.cstDoseGrid{i,5},'alphaX') && isfield(this.cstDoseGrid{i,5},'betaX') && isfield(this.cstDoseGrid{i,5},'alphaR') && isfield(this.bioModel.ZstarTable.meta, 'alphaX') && isfield(this.bioModel.ZstarTable.meta,'betaX') && isfield(this.bioModel.ZstarTable.meta, 'alphaR')
+                        %     if ~ismember(this.cstDoseGrid{i,5}.alphaX,this.bioModel.ZstarTable.meta.alphaX) && ~ismember(this.cstDoseGrid{i,5}.betaX,this.bioModel.ZstarTable.meta.betaX) && ~ismember(this.cstDoseGrid{i,5}.alphaR,this.bioModel.ZstarTable.meta.alphaR)
+                        %         matRad_cf.dispError('You selected alphaX, betaX and alphaR that are not consistent with your chosen bio model. Please choose a defined cellLine: HSG, V79 or CHO or set your alphaX, betaX, alphaR or your specific cellLine yourself in cst{i,5}.')
+                        %     end
+                        else
+                            % default cellLine
+                            matRad_cfg.dispInfo('No cellLine is found. The default cellLine "HSG" is used.')
+                            this.cstDoseGrid{i,5}.bioParams.cellLine = "HSG";
+                        end
+                    end
+                end
+                [dij.ax,dij.bx] = matRad_getPhotonLQMParameters(this.cstDoseGrid,dij.doseGrid.numOfVoxels,this.VdoseGrid);
+              
+                
+ 
+
+                for s = 1:numOfCtScen
+                    tmpScenVdoseGrid{s} = this.VdoseGrid(this.VdoseGridScenIx{s});
+                    % retrieve photon LQM parameter for the current dose grid voxels
+
+                    % vAlphaX and vBetaX for parameters in VdoseGrid
+                    this.vAlphaX{s}         = dij.ax{s}(tmpScenVdoseGrid{s});
+                    this.vBetaX{s}          = dij.bx{s}(tmpScenVdoseGrid{s});
+                    this.vTissueIndex{s}    = zeros(size(tmpScenVdoseGrid{s},1),1);
+                end
                 [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
             end
 

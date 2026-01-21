@@ -53,11 +53,37 @@ for i = 1:size(cst,1)
                 else
                     isInVdoseGrid = ismember(VdoseGrid,cst{i,4}{s});
                 end
-                ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.alphaX;
-                bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.betaX;
+                if isfield(cst{i,5}.bioParams,'cellLine')
+                    %[ax{s}(VdoseGrid(isInVdoseGrid)),bx{s}(VdoseGrid(isInVdoseGrid))] = matRad_setDefaultBioParamerters(i,cst,cellType,quantityTable,zstarTable);
+                    ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
+                    bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
+                else
+                    % if isfield(cst{i,5},'alphaX') && isfield(cst{i,5},'betaX')
+                    %     if isfield(quantityTable.data,'alphaX') && isfield(quantityTable.data,'betaX')
+                    %         [ax{s}(VdoseGrid(isInVdoseGrid)),bx{s}(VdoseGrid(isInVdoseGrid))] = matRad_setDefaultBioParamerters(i,cst,cellType,quantityTable);
+                    %     elseif isfield(quantityTable.meta,'alphaX') && isfield(quantityTable.meta,'betaX')
+                    %         [ax{s}(VdoseGrid(isInVdoseGrid)),bx{s}(VdoseGrid(isInVdoseGrid))] = matRad_setDefaultBioParamerters(i,cst,cellType,quantityTable);
+                    %     elseif isfield(zstarTable.meta,'alphaX') && isfield(zstarTable)
+                    %     end
+                    % else
+                    matRad_cfg = MatRad_Config.instance();
+                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your RBEtable.');
+                    cst{i,5}.bioParams.cellLine = "HSG";
+                    ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
+                    bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
+                    %end
+                end
             else
-                ax{s}(cst{i,4}{s}) = cst{i,5}.alphaX;
-                bx{s}(cst{i,4}{s}) = cst{i,5}.betaX;
+                if isfield(cst{i,5}.bioParams,'cellLine')
+                    ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
+                    bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
+                else
+                    matRad_cfg = MatRad_Config.instance();
+                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your RBEtable.');
+                    cst{i,5}.bioParams.cellLine = "HSG";
+                    ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
+                    bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
+                end
             end
 
         end
