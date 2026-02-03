@@ -23,7 +23,8 @@ classdef matRad_NominalScenario < matRad_ScenarioModel
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     properties (SetAccess = protected)
-        name = 'nomScen';
+        shortName   = 'nomScen';
+        name        = 'Nominal Scenario';
     end
 
     methods
@@ -41,16 +42,12 @@ classdef matRad_NominalScenario < matRad_ScenarioModel
         end
         
         function scenarios = updateScenarios(this)
-            %Scenario Probability from pdf - here it is one since only one
-            %scenario exist
-            %TODO: In the context of an uncertainty model, we should
-            %consider assigning probability according to the model, and
-            %just leaving the weight 1
-            this.scenForProb = [0 0 0 0 0];
-            this.scenProb = 1;
-
+            this.numOfCtScen = size(this.ctScenProb,1);
+            
             %Scenario weight 
-            this.scenWeight = 1;
+            this.scenWeight = ones(this.numOfCtScen,1)./this.numOfCtScen;            
+            this.scenWeight = this.ctScenProb(:,2);
+            this.ctScenIx   = this.ctScenProb(:,1);
 
             %set variables
             this.totNumShiftScen = 1;
@@ -58,16 +55,21 @@ classdef matRad_NominalScenario < matRad_ScenarioModel
             this.totNumScen = this.numOfCtScen; 
             
             %Individual shifts
-            this.relRangeShift = 0;
-            this.absRangeShift = 0;
-            this.isoShift = [0 0 0];
+            this.relRangeShift = zeros(this.numOfCtScen,1);
+            this.absRangeShift = zeros(this.numOfCtScen,1);
+            this.isoShift = zeros(this.numOfCtScen,3);            
+
+            %Probability matrices
+            this.scenForProb = [this.ctScenProb(:,1) zeros(this.numOfCtScen,5)]; %Realization matrix
+            this.scenProb = this.ctScenProb(:,2); %Probabilities for each scenario
 
             this.maxAbsRangeShift = max(this.absRangeShift);
             this.maxRelRangeShift = max(this.absRangeShift);
 
             %Mask for scenario selection
-            this.scenMask = true(this.numOfCtScen,this.totNumShiftScen,this.totNumRangeScen);
-            
+            this.scenMask = false(this.numOfAvailableCtScen,this.totNumShiftScen,this.totNumRangeScen);
+            this.scenMask(this.ctScenIx,:,:) = true;
+
             %generic code
             [x{1}, x{2}, x{3}] = ind2sub(size(this.scenMask),find(this.scenMask));
             this.linearMask    = cell2mat(x);
@@ -77,11 +79,17 @@ classdef matRad_NominalScenario < matRad_ScenarioModel
             Sigma = diag([this.shiftSD,this.rangeAbsSD,this.rangeRelSD./100].^2);
             d = size(Sigma,1);
             [cs,p] = chol(Sigma);
-            this.scenProb = (2*pi)^(-d/2) * exp(-0.5*sum((this.scenForProb/cs).^2, 2)) / prod(diag(cs));
+            tmpScenProb = (2*pi)^(-d/2) * exp(-0.5*sum((this.scenForProb(:,2:end)/cs).^2, 2)) / prod(diag(cs));
+            
+            %Multiply with 4D phase probability
+            this.scenProb = this.ctScenProb(:,2) .* tmpScenProb;
+            
+            %Get relative (normalized) weight of the scenario
             this.scenWeight = this.scenProb./sum(this.scenProb); 
             
             %Return variable
-            scenarios = [0 0 0 0 0];
+            scenarios = this.scenForProb;
+            
 
             if totNumScen ~= this.totNumScen
                 matRad_cfg = MatRad_Config.instance();

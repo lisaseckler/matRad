@@ -21,42 +21,46 @@ cst{4,3}    = 'OAR';
 cst{4,4}{1} = find(mVOIEnlarged);
 cst{4,5}    = cst{1,5};
 
-cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0)); 
-
-%% LMO objectives + Mean Dose
-cst{2,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredUnderdosingDirtyDose(100,30));
-cst{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
-cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
-
+%% primary objectives
+cst{1,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
+cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredDeviation(800,60));
+cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
+
+%% LMO objectives
+%cst{2,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredUnderdosingDirtyDose(100,30));
+cst{1,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(60,0));
+cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(60,0));
+
 
 %%
 
 % meta information for treatment plan (1) 
-pln(1).numOfFractions  = 5;
-pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
-pln(1).machine         = 'Generic';
+pln_1beam_test(1).numOfFractions  = 5;
+pln_1beam_test(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
+pln_1beam_test(1).machine         = 'Generic';
 
 % beam geometry settings
-pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [45 0 -45]; % [?] ;
+pln_1beam_test(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln_1beam_test(1).propStf.gantryAngles    = 0; %[-45 45];%[45 0 -45]; % [?] ;
 %pln(1).propStf.gantryAngles    = [90];
-pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
-pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
-pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln_1beam_test(1).propStf.couchAngles     = zeros(numel(pln_1beam_test(1).propStf.gantryAngles),1); % [?] ; 
+pln_1beam_test(1).propStf.numOfBeams      = numel(pln_1beam_test(1).propStf.gantryAngles);
+pln_1beam_test(1).propStf.isoCenter       = ones(pln_1beam_test(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln(1).propDoseCalc.calcLET = 1;
+pln_1beam_test(1).propDoseCalc.calcLET = 1;
 
-pln(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln(1).propOpt.spatioTemp      = 0;
-pln(1).propOpt.STscenarios     = 2;
+pln_1beam_test(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln_1beam_test(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln_1beam_test(1).propOpt.spatioTemp      = 0;
+pln_1beam_test(1).propOpt.STscenarios     = 2;
 %pln(1).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln(1).propDoseCalc.doseGrid.resolution.x = 3; % [mm]
-pln(1).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
-pln(1).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
+pln_1beam_test(1).propDoseCalc.doseGrid.resolution.x = 3; % [mm]
+pln_1beam_test(1).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
+pln_1beam_test(1).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 quantityOpt  = 'physicalDose';     % options: physicalDose, effect, RBExD
 %=======================================> Model check error in bioModel
@@ -68,35 +72,35 @@ modelName    = 'constRBE';             % none: for photons, protons, carbon     
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln(1).bioParam = matRad_bioModel(pln(1).radiationMode,quantityOpt, modelName);
+pln_1beam_test(1).bioParam = matRad_bioModel(pln_1beam_test(1).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln(1).multScen = matRad_multScen(ct,scenGenType);
+pln_1beam_test(1).multScen = matRad_multScen(ct,scenGenType);
 
 %pln = pln(1);
-
+%%
 % meta information for treatment plan (2) 
-pln(2).numOfFractions  = 25;
-pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
-pln(2).machine         = 'Generic';
+pln_1beam_test(2).numOfFractions  = 25;
+pln_1beam_test(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
+pln_1beam_test(2).machine         = 'Generic';
 
 % beam geometry settings
-pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
-pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
-pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
-pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln_1beam_test(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln_1beam_test(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
+pln_1beam_test(2).propStf.couchAngles     = zeros(numel(pln_1beam_test(2).propStf.gantryAngles),1);  % [?] ; 
+pln_1beam_test(2).propStf.numOfBeams      = numel(pln_1beam_test(2).propStf.gantryAngles);
+pln_1beam_test(2).propStf.isoCenter       = ones(pln_1beam_test(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln(2).propOpt.spatioTemp      = 0;
-pln(2).propOpt.STscenarios     = 5;
+pln_1beam_test(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln_1beam_test(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln_1beam_test(2).propOpt.spatioTemp      = 0;
+pln_1beam_test(2).propOpt.STscenarios     = 5;
 %pln(2).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln(2).propDoseCalc.doseGrid.resolution.x = 3; % [mm]
-pln(2).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
-pln(2).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
+pln_1beam_test(2).propDoseCalc.doseGrid.resolution.x = 3; % [mm]
+pln_1beam_test(2).propDoseCalc.doseGrid.resolution.y = 3; % [mm]
+pln_1beam_test(2).propDoseCalc.doseGrid.resolution.z = 3; % [mm]
 % pln(2).propDoseCalc.doseGrid.resolution = ct.resolution;
 
 quantityOpt  = 'physicalDose';     % options: physicalDose, effect, RBExD
@@ -108,10 +112,10 @@ modelName    = 'none';             % none: for photons, protons, carbon         
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln(2).bioParam = matRad_bioModel(pln(2).radiationMode,quantityOpt, modelName);
+pln_1beam_test(2).bioParam = matRad_bioModel(pln_1beam_test(2).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln(2).multScen = matRad_multScen(ct,scenGenType);
+pln_1beam_test(2).multScen = matRad_multScen(ct,scenGenType);
 
 % prepping cst 
 % placing alpha/beta ratios in cst{:,6},
@@ -119,85 +123,715 @@ pln(2).multScen = matRad_multScen(ct,scenGenType);
 sparecst = 0;
 
 cst = matRad_prepCst(cst, sparecst);
-
+%%
 % Plan Wrapper
-plnJO = matRad_plnWrapper(pln);
+plnJO_1beam_test = matRad_plnWrapper(pln_1beam_test);
 % Stf Wrapper
-stf = matRad_stfWrapper(ct,cst,plnJO);
+stf_1beamDD100_test = matRad_stfWrapper(ct,cst,plnJO_1beam_test);
 
-% Dij Calculation
-dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
+%% Dij Calculation
+dij_1beam_L60 = matRad_calcCombiDose(ct,stf_1beam_L60,plnJO_1beam_test,cst,false);
 % Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
-dij.precon = 0;
+dij_1beam_L60 = matRad_calcDirtyDose(2,dij_1beam_L60,pln_1beam_test);
+dij_1beam_L60 = matRad_calcmLETDose(dij_1beam_L60,pln_1beam_test);
+dij_1beam_L60.precon = 0;
+%%
+[result_overLxD60_1beam,optimizer_overLxD60_1beam] = matRad_fluenceOptimizationJO(dij_1beam_L60,cst,plnJO_1beam_test);
+%%
+% DD 500 1 beam
+physDose_DD500_1 = result_overDD500_1beam{1,1}.physicalDose * 5 + result_overDD500_1beam{1,2}.physicalDose * 25;
+RBExD_DD500_1 = result_overDD500_1beam{1,1}.physicalDose * 1.1 * 5 + result_overDD500_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD500_1 = result_overDD500_1beam{1,1}.dirtyDose * 5 + result_overDD500_1beam{1,2}.dirtyDose * 25;
+LET_DD500_1 = (result_overDD500_1beam{1,1}.LET .* result_overDD500_1beam{1,1}.physicalDose * 5 + 0.3 * result_overDD500_1beam{1,2}.physicalDose * 25)./physDose_DD500_1;
 
-[result_Under,optimizer_Under] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+% DD 500 2 beams
+physDose_DD500_2 = result_overDD500_2beam{1,1}.physicalDose * 5 + result_overDD500_2beam{1,2}.physicalDose * 25;
+RBExD_DD500_2 = result_overDD500_2beam{1,1}.physicalDose * 1.1 * 5 + result_overDD500_2beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD500_2 = result_overDD500_2beam{1,1}.dirtyDose * 5 + result_overDD500_2beam{1,2}.dirtyDose * 25;
+LET_DD500_2 = (result_overDD500_2beam{1,1}.LET .* result_overDD500_2beam{1,1}.physicalDose * 5 + 0.3 * result_overDD500_2beam{1,2}.physicalDose * 25) ./ physDose_DD500_2;
 
-physDose_U100 = result_U100{1,1}.physicalDose * 5 + result_U100{1,2}.physicalDose * 25;
-RBExD_U100 = result_U100{1,1}.physicalDose * 1.1 * 5 + result_U100{1,2}.physicalDose * 1.1 * 25;
-dirtyDose_U100 = result_U100{1,1}.dirtyDose * 5 + result_U100{1,2}.dirtyDose * 25;
-LET_U100 = (result_U100{1,1}.LET .* result_U100{1,1}.physicalDose * 5 + 0.3 * result_U100{1,2}.physicalDose * 25)./physDose_U100;
-%save("ProtonPhoton_TG119_MixedModalities_without.mat","-v7.3")
+% DD 6 1 beam
+physDose_DD6_1 = result_overDD6_1beam{1,1}.physicalDose * 5 + result_overDD6_1beam{1,2}.physicalDose * 25;
+RBExD_DD6_1 = result_overDD6_1beam{1,1}.physicalDose * 1.1 * 5 + result_overDD6_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD6_1 = result_overDD6_1beam{1,1}.dirtyDose * 5 + result_overDD6_1beam{1,2}.dirtyDose * 25;
+LET_DD6_1 = (result_overDD6_1beam{1,1}.LET .* result_overDD6_1beam{1,1}.physicalDose * 5 + 0.3 * result_overDD6_1beam{1,2}.physicalDose * 25)./physDose_DD6_1;
 
-%% Difference map
-diff30 = result_without{1,1}.physicalDose - result_DD30{1,1}.physicalDose;
-diff10 = result_without{1,1}.physicalDose - result_DD10{1,1}.physicalDose;
-diff = diff30 - diff10;
+% DD 6 2 beams
+physDose_DD6_2 = result_overDD6_2beam{1,1}.physicalDose * 5 + result_overDD6_2beam{1,2}.physicalDose * 25;
+RBExD_DD6_2 = result_overDD6_2beam{1,1}.physicalDose * 1.1 * 5 + result_overDD6_2beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD6_2 = result_overDD6_2beam{1,1}.dirtyDose * 5 + result_overDD6_2beam{1,2}.dirtyDose * 25;
+LET_DD6_2 = (result_overDD6_2beam{1,1}.LET .* result_overDD6_2beam{1,1}.physicalDose * 5 + 0.3 * result_overDD6_2beam{1,2}.physicalDose * 25)./physDose_DD6_2;
 
-cube = result_DD10{1,1}.physicalDose - result_DD30{1,1}.physicalDose;
-plane = 3;
-slice = 80;
-doseWindow = [min(cube(:)) max(cube(:))];
+% DD 100 1 beam
+physDose_DD100_1 = result_overDD_1beam{1,1}.physicalDose * 5 + result_overDD_1beam{1,2}.physicalDose * 25;
+RBExD_DD100_1 = result_overDD_1beam{1,1}.physicalDose * 1.1 * 5 + result_overDD_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD100_1 = result_overDD_1beam{1,1}.dirtyDose * 5 + result_overDD_1beam{1,2}.dirtyDose * 25;
+LET_DD100_1 = (result_overDD_1beam{1,1}.LET .* result_overDD_1beam{1,1}.physicalDose * 5 + 0.3 * result_overDD_1beam{1,2}.physicalDose * 25)./physDose_DD100_1;
 
-figure,
-subplot(2,2,1)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('DD10 - DD30')
-zoom(4)
+% DD 100 2 beams
+physDose_DD100_2 = result_overDD_2beams{1,1}.physicalDose * 5 + result_overDD_2beams{1,2}.physicalDose * 25;
+RBExD_DD100_2 = result_overDD_2beams{1,1}.physicalDose * 1.1 * 5 + result_overDD_2beams{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_DD100_2 = result_overDD_2beams{1,1}.dirtyDose * 5 + result_overDD_2beams{1,2}.dirtyDose * 25;
+LET_DD100_2 = (result_overDD_2beams{1,1}.LET .* result_overDD_2beams{1,1}.physicalDose * 5 + 0.3 * result_overDD_2beams{1,2}.physicalDose * 25)./physDose_DD100_2;
 
-cube = diff;
-plane = 3;
-slice = 80;
-doseWindow = [min(cube(:)) max(cube(:))];
+% LxD 3 1 beam 
+physDose_LxD3_1 = result_overLxD3_1beam{1,1}.physicalDose * 5 + result_overLxD3_1beam{1,2}.physicalDose * 25;
+RBExD_LxD3_1 = result_overLxD3_1beam{1,1}.physicalDose * 1.1 * 5 + result_overLxD3_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD3_1 = result_overLxD3_1beam{1,1}.dirtyDose * 5 + result_overLxD3_1beam{1,2}.dirtyDose * 25;
+LET_LxD3_1 = (result_overLxD3_1beam{1,1}.LET .* result_overLxD3_1beam{1,1}.physicalDose * 5 + 0.3 * result_overLxD3_1beam{1,2}.physicalDose * 25)./physDose_LxD3_1;
 
-subplot(2,2,2)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('diff30 - diff10')
-zoom(4)
+% LxD 3 2 beams
+physDose_LxD3_2 = result_overLxD3_2beam{1,1}.physicalDose * 5 + result_overLxD3_2beam{1,2}.physicalDose * 25;
+RBExD_LxD3_2 = result_overLxD3_2beam{1,1}.physicalDose * 1.1 * 5 + result_overLxD3_2beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD3_2 = result_overLxD3_2beam{1,1}.dirtyDose * 5 + result_overLxD3_2beam{1,2}.dirtyDose * 25;
+LET_LxD3_2 = (result_overLxD3_2beam{1,1}.LET .* result_overLxD3_2beam{1,1}.physicalDose * 5 + 0.3 * result_overLxD3_2beam{1,2}.physicalDose * 25)./physDose_LxD3_2;
 
-cube = diff30;
-plane = 3;
-slice = 80;
-doseWindow = [min(cube(:)) 6];
+% LxD 60 1 beam
+physDose_LxD60_1 = result_overLxD60_1beam{1,1}.physicalDose * 5 + result_overLxD60_1beam{1,2}.physicalDose * 25;
+RBExD_LxD60_1 = result_overLxD60_1beam{1,1}.physicalDose * 1.1 * 5 + result_overLxD60_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD60_1 = result_overLxD60_1beam{1,1}.dirtyDose * 5 + result_overLxD60_1beam{1,2}.dirtyDose * 25;
+LET_LxD60_1 = (result_overLxD60_1beam{1,1}.LET .* result_overLxD60_1beam{1,1}.physicalDose * 5 + 0.3 * result_overLxD60_1beam{1,2}.physicalDose * 25)./physDose_LxD60_1;
 
-subplot(2,2,3)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Ref - DD30')
-zoom(4)
+% LxD 60 2 beams
+physDose_LxD60_2 = result_overLxD60_2beams{1,1}.physicalDose * 5 + result_overLxD60_2beams{1,2}.physicalDose * 25;
+RBExD_LxD60_2 = result_overLxD60_2beams{1,1}.physicalDose * 1.1 * 5 + result_overLxD60_2beams{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD60_2 = result_overLxD60_2beams{1,1}.dirtyDose * 5 + result_overLxD60_2beams{1,2}.dirtyDose * 25;
+LET_LxD60_2 = (result_overLxD60_2beams{1,1}.LET .* result_overLxD60_2beams{1,1}.physicalDose * 5 + 0.3 * result_overLxD60_2beams{1,2}.physicalDose * 25)./physDose_LxD60_2;
 
-cube = diff10;
-plane = 3;
-slice = 80;
-doseWindow = [min(cube(:)) 6];
+% LxD 100 1 beam
+physDose_LxD100_1 = result_overLxD100_1beam{1,1}.physicalDose * 5 + result_overLxD100_1beam{1,2}.physicalDose * 25;
+RBExD_LxD100_1 = result_overLxD100_1beam{1,1}.physicalDose * 1.1 * 5 + result_overLxD100_1beam{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD100_1 = result_overLxD100_1beam{1,1}.dirtyDose * 5 + result_overLxD100_1beam{1,2}.dirtyDose * 25;
+LET_LxD100_1 = (result_overLxD100_1beam{1,1}.LET .* result_overLxD100_1beam{1,1}.physicalDose * 5 + 0.3 * result_overLxD100_1beam{1,2}.physicalDose * 25)./physDose_LxD100_1;
 
-subplot(2,2,4)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Ref - DD10')
-zoom(4)
+% LxD 100 2 beams
+physDose_LxD100_2 = result_overLxD100_2beams{1,1}.physicalDose * 5 + result_overLxD100_2beams{1,2}.physicalDose * 25;
+RBExD_LxD100_2 = result_overLxD100_2beams{1,1}.physicalDose * 1.1 * 5 + result_overLxD100_2beams{1,2}.physicalDose * 1.1 * 25;
+dirtyDose_LxD100_2 = result_overLxD100_2beams{1,1}.dirtyDose * 5 + result_overLxD100_2beams{1,2}.dirtyDose * 25;
+LET_LxD100_2 = (result_overLxD100_2beams{1,1}.LET .* result_overLxD100_2beams{1,1}.physicalDose * 5 + 0.3 * result_overLxD100_2beams{1,2}.physicalDose * 25)./physDose_LxD100_2;
 
-%% Creating images
-cube = physDose_without;
+%% Creating images old 3 beams
+cube1 = result_overDD{1,1}.physicalDose * 5;
+cube2 = result_overDD{1,2}.physicalDose *25;
+cube3 = physDose_O100;
+cube4 = result_overDD{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_O100;
+cube7 = result_overDD{1,1}.dirtyDose * 5;
+cube8 = result_overDD{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_O100;
+% cube10 = (result_overDD{1,1}.LET .* result_overDD{1,1}.physicalDose * 5)/result_overDD{1,1}.physicalDose;
+% cube11 = 0.3 * result_overDD{1,2}.physicalDose * 25 /result_overDD{1,2}.physicalDose;
+% cube12 = LET_O100;
+
 plane = 3;
 slice = 80;
 doseWindow = [0 70];
 
 figure,
 subplot(3,3,1)
-matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow,[]);
-title('Reference total dose')
-zoom(4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
 
+%% Creating images 0°
+% DD 6 1 beam
+cube1 = result_overDD6_1beam{1,1}.physicalDose * 5;
+cube2 = result_overDD6_1beam{1,2}.physicalDose *25;
+cube3 = physDose_DD6_1;
+cube4 = result_overDD6_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD6_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD6_1;
+cube7 = result_overDD6_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overDD6_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD6_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD6 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% DD 6 2 beams
+cube1 = result_overDD6_2beam{1,1}.physicalDose * 5;
+cube2 = result_overDD6_2beam{1,2}.physicalDose *25;
+cube3 = physDose_DD6_2;
+cube4 = result_overDD6_2beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD6_2beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD6_2;
+cube7 = result_overDD6_2beam{1,1}.dirtyDose * 5;
+cube8 = result_overDD6_2beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD6_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD6 2 beams [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+% DD 100 1 beam
+cube1 = result_overDD_1beam{1,1}.physicalDose * 5;
+cube2 = result_overDD_1beam{1,2}.physicalDose *25;
+cube3 = physDose_DD100_1;
+cube4 = result_overDD_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD100_1;
+cube7 = result_overDD_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overDD_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD100_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD100 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% DD 100 2 beams
+cube1 = result_overDD_2beams{1,1}.physicalDose * 5;
+cube2 = result_overDD_2beams{1,2}.physicalDose *25;
+cube3 = physDose_DD100_2;
+cube4 = result_overDD_2beams{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD_2beams{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD100_2;
+cube7 = result_overDD_2beams{1,1}.dirtyDose * 5;
+cube8 = result_overDD_2beams{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD100_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD100 2 beams [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+% DD 500 1 beam
+cube1 = result_overDD500_1beam{1,1}.physicalDose * 5;
+cube2 = result_overDD500_1beam{1,2}.physicalDose *25;
+cube3 = physDose_DD500_1;
+cube4 = result_overDD500_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD500_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD500_1;
+cube7 = result_overDD500_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overDD500_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD500_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD500 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% DD 500 2 beams
+cube1 = result_overDD500_2beam{1,1}.physicalDose * 5;
+cube2 = result_overDD500_2beam{1,2}.physicalDose *25;
+cube3 = physDose_DD500_2;
+cube4 = result_overDD500_2beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overDD500_2beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_DD500_2;
+cube7 = result_overDD500_2beam{1,1}.dirtyDose * 5;
+cube8 = result_overDD500_2beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_DD500_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons DD500 2 beam [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+% LxD 3 1 beam
+cube1 = result_overLxD3_1beam{1,1}.physicalDose * 5;
+cube2 = result_overLxD3_1beam{1,2}.physicalDose *25;
+cube3 = physDose_LxD3_1;
+cube4 = result_overLxD3_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD3_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD3_1;
+cube7 = result_overLxD3_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overLxD3_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD3_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD3 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% LxD 3 2 beams
+cube1 = result_overLxD3_2beam{1,1}.physicalDose * 5;
+cube2 = result_overLxD3_2beam{1,2}.physicalDose *25;
+cube3 = physDose_LxD3_2;
+cube4 = result_overLxD3_2beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD3_2beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD3_2;
+cube7 = result_overLxD3_2beam{1,1}.dirtyDose * 5;
+cube8 = result_overLxD3_2beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD3_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD3 2 beams [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+% LxD 60 1 beam
+cube1 = result_overLxD60_1beam{1,1}.physicalDose * 5;
+cube2 = result_overLxD60_1beam{1,2}.physicalDose *25;
+cube3 = physDose_LxD60_1;
+cube4 = result_overLxD60_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD60_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD60_1;
+cube7 = result_overLxD60_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overLxD60_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD60_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD60 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% LxD 60 2 beams
+cube1 = result_overLxD60_2beams{1,1}.physicalDose * 5;
+cube2 = result_overLxD60_2beams{1,2}.physicalDose *25;
+cube3 = physDose_LxD60_2;
+cube4 = result_overLxD60_2beams{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD60_2beams{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD60_2;
+cube7 = result_overLxD60_2beams{1,1}.dirtyDose * 5;
+cube8 = result_overLxD60_2beams{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD60_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD60 2 beams [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+% LxD 100 1 beam
+cube1 = result_overLxD100_1beam{1,1}.physicalDose * 5;
+cube2 = result_overLxD100_1beam{1,2}.physicalDose *25;
+cube3 = physDose_LxD100_1;
+cube4 = result_overLxD100_1beam{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD100_1beam{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD100_1;
+cube7 = result_overLxD100_1beam{1,1}.dirtyDose * 5;
+cube8 = result_overLxD100_1beam{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD100_1;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD100 1 beam 0°')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+% LxD 100 2 beams
+cube1 = result_overLxD100_2beams{1,1}.physicalDose * 5;
+cube2 = result_overLxD100_2beams{1,2}.physicalDose *25;
+cube3 = physDose_LxD100_2;
+cube4 = result_overLxD100_2beams{1,1}.physicalDose * 1.1 * 5;
+cube5 = result_overLxD100_2beams{1,2}.physicalDose * 1.1 *25;
+cube6 = RBExD_LxD100_2;
+cube7 = result_overLxD100_2beams{1,1}.dirtyDose * 5;
+cube8 = result_overLxD100_2beams{1,2}.dirtyDose * 25;
+cube9 = dirtyDose_LxD100_2;
+
+plane = 3;
+slice = 80;
+doseWindow = [0 70];
+
+figure,
+subplot(3,3,1)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube1,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('protons LxD100 2 beams [-45° 45°]')
+zoom(2)
+subplot(3,3,2)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube2,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('photons')
+zoom(2)
+subplot(3,3,3)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube3,plane,slice,[],[],colorcube,[],doseWindow,[]);
+title('total')
+zoom(2)
+subplot(3,3,4)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube4,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,5)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube5,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,6)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube6,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,7)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube7,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,8)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube8,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+subplot(3,3,9)
+matRad_plotSliceWrapper(gca,ct,cst,1,cube9,plane,slice,[],[],colorcube,[],doseWindow,[]);
+zoom(2)
+
+
+%%
 cube = result_without{1,1}.physicalDose * 5;
 plane = 3;
 slice = 80;
@@ -764,25 +1398,25 @@ title('total physDose DD10 - DD30')
 
 %% BED
 % BED = D*(1+d/(alpha/beta))
-BED_without_proton = result_without{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_without{1,1}.physicalDose./(0.1./0.05));
-BED_DD_proton = result_DD{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_DD{1,1}.physicalDose./(0.1./0.05));
-BED_DD10_proton = result_DD10{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_DD10{1,1}.physicalDose./(0.1./0.05));
-BED_DD30_proton = result_DD30{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_DD30{1,1}.physicalDose./(0.1./0.05));
-BED_DD300_proton = result_DD300{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_DD300{1,1}.physicalDose./(0.1./0.05));
-BED_mL_proton = result_mL{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_mL{1,1}.physicalDose./(0.1./0.05));
-BED_mL6_proton = result_mL6{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_mL6{1,1}.physicalDose./(0.1./0.05));
-BED_mL10_proton = result_mL10{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_mL10{1,1}.physicalDose./(0.1./0.05));
-BED_mL30_proton = result_mL30{1,1}.physicalDose * pln(1).numOfFractions .*(1 + result_mL30{1,1}.physicalDose./(0.1./0.05));
+BED_without_proton = result_without{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_without{1,1}.physicalDose./(0.1./0.05));
+BED_DD_proton = result_DD{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_DD{1,1}.physicalDose./(0.1./0.05));
+BED_DD10_proton = result_DD10{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_DD10{1,1}.physicalDose./(0.1./0.05));
+BED_DD30_proton = result_DD30{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_DD30{1,1}.physicalDose./(0.1./0.05));
+BED_DD300_proton = result_DD300{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_DD300{1,1}.physicalDose./(0.1./0.05));
+BED_mL_proton = result_mL{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_mL{1,1}.physicalDose./(0.1./0.05));
+BED_mL6_proton = result_mL6{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_mL6{1,1}.physicalDose./(0.1./0.05));
+BED_mL10_proton = result_mL10{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_mL10{1,1}.physicalDose./(0.1./0.05));
+BED_mL30_proton = result_mL30{1,1}.physicalDose * pln_1beam_test(1).numOfFractions .*(1 + result_mL30{1,1}.physicalDose./(0.1./0.05));
 
-BED_without_photon = result_without{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_without{1,2}.physicalDose./(0.1./0.05));
-BED_DD_photon = result_DD{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_DD{1,2}.physicalDose./(0.1./0.05));
-BED_DD10_photon = result_DD10{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_DD10{1,2}.physicalDose./(0.1./0.05));
-BED_DD30_photon = result_DD30{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_DD30{1,2}.physicalDose./(0.1./0.05));
-BED_DD300_photon = result_DD300{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_DD300{1,2}.physicalDose./(0.1./0.05));
-BED_mL_photon = result_mL{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_mL{1,2}.physicalDose./(0.1./0.05));
-BED_mL6_photon = result_mL6{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_mL6{1,2}.physicalDose./(0.1./0.05));
-BED_mL10_photon = result_mL10{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_mL10{1,2}.physicalDose./(0.1./0.05));
-BED_mL30_photon = result_mL30{1,2}.physicalDose * pln(2).numOfFractions .*(1 + result_mL30{1,2}.physicalDose./(0.1./0.05));
+BED_without_photon = result_without{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_without{1,2}.physicalDose./(0.1./0.05));
+BED_DD_photon = result_DD{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_DD{1,2}.physicalDose./(0.1./0.05));
+BED_DD10_photon = result_DD10{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_DD10{1,2}.physicalDose./(0.1./0.05));
+BED_DD30_photon = result_DD30{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_DD30{1,2}.physicalDose./(0.1./0.05));
+BED_DD300_photon = result_DD300{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_DD300{1,2}.physicalDose./(0.1./0.05));
+BED_mL_photon = result_mL{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_mL{1,2}.physicalDose./(0.1./0.05));
+BED_mL6_photon = result_mL6{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_mL6{1,2}.physicalDose./(0.1./0.05));
+BED_mL10_photon = result_mL10{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_mL10{1,2}.physicalDose./(0.1./0.05));
+BED_mL30_photon = result_mL30{1,2}.physicalDose * pln_1beam_test(2).numOfFractions .*(1 + result_mL30{1,2}.physicalDose./(0.1./0.05));
 
 BED_without_combi = BED_without_proton + BED_without_photon;
 BED_DD_combi = BED_DD_proton + BED_DD_photon;
@@ -1659,15 +2293,15 @@ dvh_PmL30_L = matRad_calcDVH(cst_mL30,LET_mL30);
 
 %% indicator wrapper
 % physicalDose only proton
-qi_Prowithout_p  = matRad_calcQualityIndicators(cst_without,pln(1),result_without{1}.physicalDose,[],[]);
-qi_ProDD_p  = matRad_calcQualityIndicators(cst_DD,pln(1),result_DD{1}.physicalDose,[],[]);
-qi_PromL_p  = matRad_calcQualityIndicators(cst_mL,pln(1),result_mL{1}.physicalDose,[],[]);
-qi_ProDD300_p  = matRad_calcQualityIndicators(cst_DD300,pln(1),result_DD300{1}.physicalDose,[],[]);
-qi_ProDD30_p  = matRad_calcQualityIndicators(cst_DD30,pln(1),result_DD30{1}.physicalDose,[],[]);
-qi_ProDD10_p = matRad_calcQualityIndicators(cst_DD10,pln(1),result_DD10{1}.physicalDose,[],[]);
-qi_PromL6_p  = matRad_calcQualityIndicators(cst_mL6,pln(1),result_mL6{1}.physicalDose,[],[]);
-qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln(1),result_mL10{1}.physicalDose,[],[]);
-qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln(1),result_mL30{1}.physicalDose,[],[]);
+qi_Prowithout_p  = matRad_calcQualityIndicators(cst_without,pln_1beam_test(1),result_without{1}.physicalDose,[],[]);
+qi_ProDD_p  = matRad_calcQualityIndicators(cst_DD,pln_1beam_test(1),result_DD{1}.physicalDose,[],[]);
+qi_PromL_p  = matRad_calcQualityIndicators(cst_mL,pln_1beam_test(1),result_mL{1}.physicalDose,[],[]);
+qi_ProDD300_p  = matRad_calcQualityIndicators(cst_DD300,pln_1beam_test(1),result_DD300{1}.physicalDose,[],[]);
+qi_ProDD30_p  = matRad_calcQualityIndicators(cst_DD30,pln_1beam_test(1),result_DD30{1}.physicalDose,[],[]);
+qi_ProDD10_p = matRad_calcQualityIndicators(cst_DD10,pln_1beam_test(1),result_DD10{1}.physicalDose,[],[]);
+qi_PromL6_p  = matRad_calcQualityIndicators(cst_mL6,pln_1beam_test(1),result_mL6{1}.physicalDose,[],[]);
+qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln_1beam_test(1),result_mL10{1}.physicalDose,[],[]);
+qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln_1beam_test(1),result_mL30{1}.physicalDose,[],[]);
 
 % dirtyDose only proton
 qi_Prowithout_d  = matRad_calcQualityIndicators(cst_without,pln_o(1),result_without{1}.dirtyDose,[],[]);
@@ -1677,8 +2311,8 @@ qi_ProDD300_d  = matRad_calcQualityIndicators(cst_DD300,pln_o(1),result_DD300{1}
 qi_ProDD30_d  = matRad_calcQualityIndicators(cst_DD30,pln_o(1),result_DD30{1}.dirtyDose,[],[]);
 qi_ProDD10_d  = matRad_calcQualityIndicators(cst_DD10,pln_o(1),result_DD10{1}.dirtyDose,[],[]);
 qi_PromL6_d  = matRad_calcQualityIndicators(cst_mL6,pln_o(1),result_mL6{1}.dirtyDose,[],[]);
-qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln(1),result_mL10{1}.physicalDose,[],[]);
-qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln(1),result_mL30{1}.physicalDose,[],[]);
+qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln_1beam_test(1),result_mL10{1}.physicalDose,[],[]);
+qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln_1beam_test(1),result_mL30{1}.physicalDose,[],[]);
 
 % LET only proton
 qi_Prowithout_L  = matRad_calcQualityIndicators(cst_without,pln_o(1),result_without{1}.LET,[],[]);
@@ -1688,8 +2322,8 @@ qi_ProDD300_L  = matRad_calcQualityIndicators(cst_DD300,pln_o(1),result_DD300{1}
 qi_ProDD30_L  = matRad_calcQualityIndicators(cst_DD30,pln_o(1),result_DD30{1}.LET,[],[]);
 qi_ProDD10_L  = matRad_calcQualityIndicators(cst_DD10,pln_o(1),result_DD10{1}.LET,[],[]);
 qi_PromL6_L  = matRad_calcQualityIndicators(cst_mL6,pln_o(1),result_mL6{1}.LET,[],[]);
-qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln(1),result_mL10{1}.physicalDose,[],[]);
-qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln(1),result_mL30{1}.physicalDose,[],[]);
+qi_PromL10_p  = matRad_calcQualityIndicators(cst_mL10,pln_1beam_test(1),result_mL10{1}.physicalDose,[],[]);
+qi_PromL30_p  = matRad_calcQualityIndicators(cst_mL30,pln_1beam_test(1),result_mL30{1}.physicalDose,[],[]);
 
 
 % physicalDose only photon

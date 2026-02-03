@@ -40,6 +40,9 @@ classdef MatRad_Config < handle
         eduMode = false;
         
         gui;
+
+         %User folders
+        userfolders; %Cell array of user folders containing machines, patients, hluts. Default contains the userdata folder in the matRad root directory
     end
 
     properties (SetAccess = private)
@@ -56,6 +59,9 @@ classdef MatRad_Config < handle
 
     properties (SetAccess = private)
         matRadRoot;
+        primaryUserFolder;  %Points to the first entry in userfolders
+        exampleFolder;      %Contains examples  
+        thirdPartyFolder;   %Contains third party tools/libraries used in matRad
     end
     methods (Access = private)
         function obj = MatRad_Config()
@@ -65,9 +71,26 @@ classdef MatRad_Config < handle
             %  For instantiation, use the static MatRad_Config.instance();
             
 
-            %Set Path
-            obj.matRadRoot = fileparts(mfilename('fullpath'));
-            addpath(genpath(obj.matRadRoot));
+             %Set Path
+            if isdeployed
+                obj.matRadRoot = [ctfroot filesep 'matRad'];
+
+                if ispc
+                    userdir= getenv('USERPROFILE');
+                else 
+                    userdir= getenv('HOME');
+                end
+
+                userfolderInHomeDir = [userdir filesep 'matRad'];               
+
+                obj.userfolders = {userfolderInHomeDir};
+            else
+                obj.matRadRoot = fileparts(fileparts(mfilename('fullpath')));
+                addpath(genpath(obj.matRadRoot));
+                addpath(obj.exampleFolder);
+                addpath(genpath(obj.thirdPartyFolder));
+                obj.userfolders = {[obj.matRadRoot filesep 'userdata' filesep]};
+            end     
 
             %Set Version
             obj.getEnvironment();
@@ -390,6 +413,83 @@ classdef MatRad_Config < handle
                 obj.writeLog = false;
             end
         end
+
+         function set.userfolders(obj,userfolders)
+            oldFolders = obj.userfolders;
+                     
+            %Check if folders need to be created
+            for f = 1:numel(userfolders)
+                if ~isfolder(userfolders{f})
+                    [status, msg] = mkdir(userfolders{f});
+                    if status == 0
+                        obj.dispWarning('Userfolder %s not added beacuse it could not be created: %s',userfolders{f},msg);
+                    else
+                        subfolders = {'hluts','machines','patients','scripts'};                    
+                        [status,msgs] = cellfun(@(sub) mkdir([userfolders{f} filesep sub]),subfolders,'UniformOutput',false);
+                        if any(cell2mat(status) ~= 1)
+                            obj.dispWarning('Problem when creating subfolder in Userfolder %s!',userfolders{f})
+                        end
+                    end
+                end
+            end
+
+            %We do this to verify folders
+            nonWorkingFolders = cellfun(@isempty,userfolders);
+            userfolders(nonWorkingFolders) = [];
+
+            allNewFolders = cellfun(@dir, userfolders,'UniformOutput',false);
+            if isempty(allNewFolders)
+                obj.dispWarning('No user folders specified. Defaulting to userdata folder in matRad root directory.');
+                if ~isdeployed
+                    allNewFolders = {[fileparts(mfilename('fullpath')) filesep 'userdata' filesep]}; %We don't access obj.matRadRoot here because of Matlab's weird behavior with properties
+                else
+                    allNewFolders = {[ctfroot filesep 'userdata' filesep]}; %We don't access obj.matRadRoot here because of Matlab's weird behavior with properties
+                end
+            end           
+
+            cleanedNewFolders = cellfun(@(x) x(1).folder,allNewFolders,'UniformOutput',false);
+            
+            % Identify newly added folder paths and add them to path
+            if ~isdeployed
+                if ~isempty(oldFolders) %if statement for octave compatibility
+                    addedFolders = setdiff(cleanedNewFolders, oldFolders);
+                else
+                    addedFolders = cleanedNewFolders;
+                end
+                addedFolders = cellfun(@genpath,addedFolders,'UniformOutput',false);
+                addedFolders = strjoin(addedFolders,pathsep);
+                addpath(addedFolders);
+            end
+
+            % Identify removed folder paths
+            if ~isempty(oldFolders) %if statement for octave compatibility
+                removedFolders = setdiff(oldFolders, cleanedNewFolders);
+                removedFolders = cellfun(@genpath,removedFolders,'UniformOutput',false);
+                removedFolders = strjoin(removedFolders,pathsep);
+                if ~isdeployed
+                    rmpath(removedFolders);
+                end
+            end
+            
+            obj.userfolders = cleanedNewFolders;
+        end
+
+        function srcRoot = get.matRadRoot(obj)
+            srcRoot = [obj.matRadRoot filesep 'matRad' filesep];
+        end
+
+        function primaryUserFolder = get.primaryUserFolder(obj)
+            primaryUserFolder = obj.userfolders{1};
+        end
+
+        function exampleFolder = get.exampleFolder(obj)
+            exampleFolder = [obj.matRadRoot filesep 'examples' filesep];            
+        end
+
+        function thirdPartyFolder = get.thirdPartyFolder(obj)
+            thirdPartyFolder = [obj.matRadRoot filesep 'thirdParty' filesep];
+        end
+
 
         function getEnvironment(obj)
             % getEnvironment function to get the software environment

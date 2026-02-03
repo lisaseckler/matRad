@@ -34,7 +34,8 @@ classdef matRad_RandomScenarios < matRad_ScenarioModel
     end
 
     properties (SetAccess=protected)
-        name = 'rndScen';
+        name = 'Randomly sampled Scenarios';
+        shortName   = 'rndScen';        
     end
     
     methods
@@ -95,6 +96,8 @@ classdef matRad_RandomScenarios < matRad_ScenarioModel
         
         function scenarios = updateScenarios(this)
             matRad_cfg = MatRad_Config.instance();
+
+            this.numOfCtScen = size(this.ctScenProb,1);
             
             %Multivariate Normal Sampling
             Sigma = diag([this.shiftSD,this.rangeAbsSD,this.rangeRelSD./100].^2);
@@ -115,38 +118,60 @@ classdef matRad_RandomScenarios < matRad_ScenarioModel
                 %first one to keep the number of scenarios the same 
                 scenarios(1,:) = 0; 
             end
+
+            %Handle 4D phases
+            phases = repmat(this.ctScenProb(:,1)',size(scenarios,1),1);
+            phases = phases(:);
+            scenarios = horzcat(phases, repmat(scenarios,[this.numOfCtScen 1]));
+            this.ctScenIx = phases;
             
             %Scenario Probability from pdf
             this.scenForProb = scenarios;
-            this.scenProb = (2*pi)^(-d/2) * exp(-0.5*sum((scenarios/cs).^2, 2)) / prod(diag(cs));
-
+            
+            %Create phase and setup/range probabilities
+            tmpScenProb = (2*pi)^(-d/2) * exp(-0.5*sum((scenarios(:,2:end)/cs).^2, 2)) / prod(diag(cs));
+            
+            %Now we combine with the 4D ct phase probabilities (multiply)
+            tmpPhaseProb = arrayfun(@(phase) this.ctScenProb(find(this.ctScenProb(:,1) == phase),2),phases);
+            
+            %Finalize Probability
+            this.scenProb = tmpPhaseProb .* tmpScenProb;
+                
             %Scenario weight
-            this.scenWeight = ones(this.nSamples,1)./this.nSamples; %equal weights since they have been randomly sampled (not entirely true if the Nominal scenario was forced) 
+            this.scenWeight = [];
+            for sCt = 1:this.numOfCtScen
+                %equal weights within a phase since they have been randomly sampled 
+                %(not entirely true if the Nominal scenario was forced) 
+                this.scenWeight = [this.scenWeight; this.ctScenProb(sCt,2) * ones(this.nSamples,1)./this.nSamples];
+            end
 
             %set variables
             this.totNumShiftScen = this.nSamples;
             this.totNumRangeScen = this.nSamples;
-            this.totNumScen = this.nSamples; %check because of CT scenarios
+            this.totNumScen = this.nSamples * this.numOfCtScen; %check because of CT scenarios
             %this.totNumCtScen = 
             %this.numOfShiftScen = [nSamples,nSamples,nSamples];
             %this.numOfRangeShiftScen = nSamples;
             
             %Individual shifts
-            this.relRangeShift = scenarios(:,5);
-            this.absRangeShift = scenarios(:,4);
-            this.isoShift = scenarios(:,1:3);
+            this.relRangeShift = scenarios(:,6);
+            this.absRangeShift = scenarios(:,5);
+            this.isoShift = scenarios(:,2:4);
 
             this.maxAbsRangeShift = max(this.absRangeShift);
             this.maxRelRangeShift = max(this.relRangeShift);
 
             %Mask for scenario selection
-            this.scenMask = false(this.numOfCtScen,this.totNumShiftScen,this.totNumRangeScen);
+            this.scenMask = false(this.numOfAvailableCtScen,this.totNumShiftScen,this.totNumRangeScen);
 
             for sCt = 1:this.numOfCtScen
-                this.scenMask(sCt,:,:) = diag(true(this.nSamples,1));
+                scenIx = this.ctScenProb(sCt,1);
+                this.scenMask(scenIx,:,:) = diag(true(this.nSamples,1));
             end
             
-            [x{1}, x{2}, x{3}] = ind2sub(size(this.scenMask),find(this.scenMask));
+
+            tmpScenMask = permute(this.scenMask,[3 2 1]);
+            [x{3}, x{2}, x{1}] = ind2sub(size(tmpScenMask),find(tmpScenMask));
             this.linearMask    = cell2mat(x);
             totNumScen    = sum(this.scenMask(:));
 
