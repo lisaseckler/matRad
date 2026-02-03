@@ -1,6 +1,6 @@
 function [ Data_Dose,Data_Fluence,Zdepths, rDepths, AreaOfScoringRings] = combineScoringVolumes(Data_In, Data_Fluence_In,resolution, R0)
 
-    R0 = resolution.zCoarseNum + 0.25*R0;
+    R0 = resolution.zCoarseNum;
     R = 0:resolution.r:resolution.r*resolution.rNum;
     AreaOfScoringRings = pi.*(R(2:end).^2-R(1:end-1).^2);
     % Middle of scoring Voxel

@@ -27,7 +27,7 @@ sigma = zeros(N,2);
 weight = zeros(N,1);
 
 % fit sigmas till dose reaches, a percent of max dose
-[~, ixSigmaFit] = min(abs(IDD(max_ix:end) - 0.01*maxIDD));
+[~, ixSigmaFit] = min(abs(IDD(max_ix:end) - maxIDD));
 if zdepth(max_ix+ixSigmaFit-1) < r80 + 20
     [~, ixSigmaFit] = min(abs(zdepth(max_ix:end) - (r80+20)));
 end
@@ -40,7 +40,7 @@ objFunc    = fittype(gauss2);
 objFuncSpec = fittype(gauss3);
 
 
-for i = 1:max_ix+ixSigmaFit-1
+for i = 1:N %max_ix+ixSigmaFit-1
 
     % normaliseProfile
     profile = EnergyDepositedZR(i,:);
@@ -105,14 +105,15 @@ end
 
 
 % only inlcude where sigma whas fited and correct for inital sigma, spot size
-zdepth  = zdepth(1:max_ix +ixSigmaFit-1);
-IDD     = IDD(1:max_ix +ixSigmaFit-1);
-weight = weight(1:max_ix +ixSigmaFit-1,:);
-sigma  = sqrt(sigma(1:max_ix +ixSigmaFit-1,:).^2 - params.sigma0.^2);
+zdepth  = zdepth; %(1:max_ix +ixSigmaFit-1);
+IDD     = IDD; %(1:max_ix +ixSigmaFit-1);
+weight = weight; %(1:max_ix +ixSigmaFit-1,:);
+%sigma  = sqrt(sigma(1:max_ix +ixSigmaFit-1,:).^2 - params.sigma0.^2);
+sigma = sqrt(sigma.^2 - params.sigma0.^2);
 
-for ixZ = 1:nZspec
-    Data_Fluence.spectra(ixZ).fluenceSpectrum = Data_Fluence.spectra(ixZ).fluenceSpectrum(:,1:max_ix +ixSigmaFit-1);
-end
+% for ixZ = 1:nZspec
+%     Data_Fluence.spectra(ixZ).fluenceSpectrum = Data_Fluence.spectra(ixZ).fluenceSpectrum(:,1:max_ix +ixSigmaFit-1);
+% end
 
 
 if ~isreal(sigma)

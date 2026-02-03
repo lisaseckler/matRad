@@ -31,7 +31,7 @@ params = struct();
 
 params.SAD = machine.meta.SAD;
 params.r = 1;
-params.rNum = 50;
+params.rNum = 70;
 params.zCoarse = 2;
 params.zFine = 0.2;
 params.zFineNum = 100;
@@ -43,12 +43,12 @@ dataType = 'binary';
 
 %% Fitting Loop
 
-foldername = 'C:\Users\l813r\Documents\GitHub\Lisa\matRad\SimulationScripts\';
+foldername = 'C:\Users\l813r\Documents\GitHub\LisaSeckler\matRad\matRad\Scripts_big\';
 
 visBool = false;
-for i = 1:numel(E)
+for i = 113
 
-    if ismember(i, [1, 124, 255])
+    if ismember(i, [113])
         visBool = true;
     else
         visBool = false;
