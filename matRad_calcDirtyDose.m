@@ -20,12 +20,22 @@ else
         disp('Not enough input arguments! Calculation is not working.')
     else
         dij.dirtyDoseThreshold                       = LET_thres;
+        if ~isfield(dij,'numOfModalities') 
+             dij.numOfModalities = 1;
+        end
         [dij.LETmaskDirty,dij.mLET,~] = matRad_calcLETmask(dij);
 
         for k = 1:dij.numOfModalities
-            dij.original_Dijs{1,k}.dirtyDoseThreshold    = LET_thres;
-            dij.original_Dijs{1,k}.dirtyDose{1}             = dij.LETmaskDirty{1,k} .* dij.original_Dijs{1,k}.physicalDose{1};
-            % dij.original_Dijs{1,k}.cleanDose             = dij.LETmaskClean{1,k} .* dij.original_Dijs{1,k}.physicalDose{1};
+            if dij.numOfModalities == 2
+                dij.original_Dijs{1,k}.dirtyDoseThreshold    = LET_thres;
+                dij.original_Dijs{1,k}.dirtyDose{1}             = dij.LETmaskDirty{1,k} .* dij.original_Dijs{1,k}.physicalDose{1};
+                % dij.original_Dijs{1,k}.cleanDose             = dij.LETmaskClean{1,k} .* dij.original_Dijs{1,k}.physicalDose{1};
+            elseif dij.numOfModalities == 1
+                dij.dirtyDoseThreshold    = LET_thres;
+                dij.dirtyDose{1}             = dij.LETmaskDirty{1}.* dij.physicalDose{1};
+            else
+                disp('dirtyDose is not saved into dij')
+            end
         end
         
         % m = 2;

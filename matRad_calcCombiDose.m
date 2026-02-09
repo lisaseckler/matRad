@@ -222,7 +222,7 @@ if (strcmp(pln.radiationMode, 'MixMod'))
 
     dij.dualIrradiation = false;
 
-    %         dij.original_Dijs = [dijt];
+     %       dij.original_Dijs = [dijt];
 
 
     matRad_cfg.dispInfo('SUCCESS. I Dij It  !! \n');

@@ -16,18 +16,27 @@ function dij = matRad_calcmLETDose(dij,pln)
 dij.mLETDose = {};
  % m = 2;
  %        rad = ["protons","photons","carbon","helium"];
-        for k = 1:dij.numOfModalities
-            if ~isfield(dij.original_Dijs{1,k},'mLETDose')
-                % dij.original_Dijs{1,k}.mLETDose{1} = zeros(size(dij.original_Dijs{1,k}.physicalDose{1}));
-                %Size = (ones(size(dij.original_Dijs{1,k}.physicalDose{1})) * 0.3);
-                %logicalSize = Size == 0.3;
-                %mL = sparse(logicalSize,true,Size,dij.doseGrid.numOfVoxels,dij.original_Dijs{1,k}.totalNumOfBixels);
-                %dij.original_Dijs{1,k}.mLETDose{1} = mL .* dij.original_Dijs{1,k}.physicalDose{1};
-                
-                dij.original_Dijs{1,k}.mLETDose{1} = 0.3 * dij.original_Dijs{1,k}.physicalDose{1};
+ for k = 1:dij.numOfModalities
+     %if dij.numOfModalities == 2 %exist('dij.original_Dijs','var')
+         if ~isfield(dij.original_Dijs{1,k},'mLETDose')
+             % dij.original_Dijs{1,k}.mLETDose{1} = zeros(size(dij.original_Dijs{1,k}.physicalDose{1}));
+             %Size = (ones(size(dij.original_Dijs{1,k}.physicalDose{1})) * 0.3);
+             %logicalSize = Size == 0.3;
+             %mL = sparse(logicalSize,true,Size,dij.doseGrid.numOfVoxels,dij.original_Dijs{1,k}.totalNumOfBixels);
+             %dij.original_Dijs{1,k}.mLETDose{1} = mL .* dij.original_Dijs{1,k}.physicalDose{1};
 
-            end
-        end
+             dij.original_Dijs{1,k}.mLETDose{1} = 0.3 * dij.original_Dijs{1,k}.physicalDose{1};
+
+         end
+     % elseif k == 1
+     %     if ~isfield(dij,'mLETDose')
+     %         dij.mLETDose{1} = 0.3 * dij.physicalDose{1};
+     % 
+     %     end
+     % else
+     %     disp('No dij found!')
+     %end
+ end
 
         % if pln(2).radiationMode == rad(1,2)
         %     Size = zeros(size(dij.original_Dijs{1,m-1}.physicalDose{1}));

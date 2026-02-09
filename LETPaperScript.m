@@ -56,39 +56,54 @@ cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
 
 %%
-cst{4,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(500,20)); 
+cst{3,6}{2} = struct(mLETDoseObjectives.matRad_SquaredOverdosingmLETDose(100,20)); 
 cst{13,6}{2} = struct(mLETDoseObjectives.matRad_SquaredUnderdosingmLETDose(100,90)); 
 cst{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(500,0)); 
 cst{13,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredUnderdosingDirtyDose(100,18)); 
 % cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,40)); 
  cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+
+ %% Glioma case different alpha/beta ratios
+
+% a/ß for brainstem = 2.1 Gy, we can keep it
+
+% a/ß for glioma (GTV and CTV) = 6 Gy, a = 0.25 Gy^-1, ß = 0.04167 Gy^-2
+cst{13,5}.alphaX = 0.25;
+cst{14,5}.alphaX = 0.25;
+cst{13,5}.betaX = 0.04167;
+cst{14,5}.betaX = 0.04167;
+
+%% recreating ref joint plan
+
+cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
+
 %%
 
 % % meta information for treatment plan (1) 
-pln(1).numOfFractions  = 5;
-pln(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
-pln(1).machine         = 'Generic';
+pln_onlyPro(1).numOfFractions  = 5;
+pln_onlyPro(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
+pln_onlyPro(1).machine         = 'Generic';
 
 % beam geometry settings
-pln(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(1).propStf.gantryAngles    = [-45 0 45];%[-30 30]; %[265 285]; %[90 180 270];% [?] ;
+pln_onlyPro(1).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln_onlyPro(1).propStf.gantryAngles    = [265 285]; %[90 180 270];% [?] ;
 %pln(1).propStf.gantryAngles    = [90];
-pln(1).propStf.couchAngles     = zeros(numel(pln(1).propStf.gantryAngles),1); % [?] ; 
-pln(1).propStf.numOfBeams      = numel(pln(1).propStf.gantryAngles);
-pln(1).propStf.isoCenter       = ones(pln(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln_onlyPro(1).propStf.couchAngles     = zeros(numel(pln_onlyPro(1).propStf.gantryAngles),1); % [?] ; 
+pln_onlyPro(1).propStf.numOfBeams      = numel(pln_onlyPro(1).propStf.gantryAngles);
+pln_onlyPro(1).propStf.isoCenter       = ones(pln_onlyPro(1).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln(1).propDoseCalc.calcLET = 1;
+pln_onlyPro(1).propDoseCalc.calcLET = 1;
 
-pln(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln(1).propOpt.spatioTemp      = 0;
-pln(1).propOpt.STscenarios     = 2;
+pln_onlyPro(1).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln_onlyPro(1).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln_onlyPro(1).propOpt.spatioTemp      = 0;
+pln_onlyPro(1).propOpt.STscenarios     = 2;
 %pln(1).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln(1).propDoseCalc.doseGrid.resolution.x = 5; % [mm]
-pln(1).propDoseCalc.doseGrid.resolution.y = 5; % [mm]
-pln(1).propDoseCalc.doseGrid.resolution.z = 5; % [mm]
+pln_onlyPro(1).propDoseCalc.doseGrid.resolution.x = 5; % [mm]
+pln_onlyPro(1).propDoseCalc.doseGrid.resolution.y = 5; % [mm]
+pln_onlyPro(1).propDoseCalc.doseGrid.resolution.z = 5; % [mm]
 % pln(1).propDoseCalc.doseGrid.resolution = ct.resolution;
 %quantityOpt  = 'effect';     % options: physicalDose, effect, RBExD
 quantityOpt = 'physicalDose';
@@ -102,35 +117,35 @@ modelName = 'constRBE';
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln(1).bioParam = matRad_bioModel(pln(1).radiationMode,quantityOpt, modelName);
+pln_onlyPro(1).bioParam = matRad_bioModel(pln_onlyPro(1).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln(1).multScen = matRad_multScen(ct,scenGenType);
+pln_onlyPro(1).multScen = matRad_multScen(ct,scenGenType);
 
 %pln = pln(1);
 
 % meta information for treatment plan (2) 
-pln(2).numOfFractions  = 25;
-pln(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
-pln(2).machine         = 'Generic';
+pln_onlyPro(2).numOfFractions  = 25;
+pln_onlyPro(2).radiationMode   = 'photons';           % either photons / protons / helium / carbon
+pln_onlyPro(2).machine         = 'Generic';
 
 % beam geometry settings
-pln(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
-pln(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
-pln(2).propStf.couchAngles     = zeros(numel(pln(2).propStf.gantryAngles),1);  % [?] ; 
-pln(2).propStf.numOfBeams      = numel(pln(2).propStf.gantryAngles);
-pln(2).propStf.isoCenter       = ones(pln(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
+pln_onlyPro(2).propStf.bixelWidth      = 5; % [mm] / also corresponds to lateral spot spacing for particles
+pln_onlyPro(2).propStf.gantryAngles    = [0:40:359]; % [?] ;
+pln_onlyPro(2).propStf.couchAngles     = zeros(numel(pln_onlyPro(2).propStf.gantryAngles),1);  % [?] ; 
+pln_onlyPro(2).propStf.numOfBeams      = numel(pln_onlyPro(2).propStf.gantryAngles);
+pln_onlyPro(2).propStf.isoCenter       = ones(pln_onlyPro(2).propStf.numOfBeams,1) * matRad_getIsoCenter(cst,ct,0);
 % optimization settings
-pln(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
-pln(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
-pln(2).propOpt.spatioTemp      = 0;
-pln(2).propOpt.STscenarios     = 5;
+pln_onlyPro(2).propOpt.runDAO          = false;      % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln_onlyPro(2).propOpt.runSequencing   = false;      % 1/true: run sequencing, 0/false: don't / will be ignored for particles and also triggered by runDAO below
+pln_onlyPro(2).propOpt.spatioTemp      = 0;
+pln_onlyPro(2).propOpt.STscenarios     = 5;
 %pln(2).propOpt.STfractions     = [ 4 4 6 8 8];             % can also do different spread of the fractions between scenes ( make sure sum(STfractions == numOfFractions)
 
 % dose calculation settings
-pln(2).propDoseCalc.doseGrid.resolution.x = 5; % [mm]
-pln(2).propDoseCalc.doseGrid.resolution.y = 5; % [mm]
-pln(2).propDoseCalc.doseGrid.resolution.z = 5; % [mm]
+pln_onlyPro(2).propDoseCalc.doseGrid.resolution.x = 5; % [mm]
+pln_onlyPro(2).propDoseCalc.doseGrid.resolution.y = 5; % [mm]
+pln_onlyPro(2).propDoseCalc.doseGrid.resolution.z = 5; % [mm]
 % pln(2).propDoseCalc.doseGrid.resolution = ct.resolution;
 
 %quantityOpt  = ['effect'];     % options: physicalDose, effect, RBExD
@@ -143,10 +158,10 @@ modelName    = 'none';             % none: for photons, protons, carbon         
 scenGenType  = 'nomScen';          % scenario creation type 'nomScen'  'wcScen' 'impScen' 'rndScen'                                          
 
 % retrieve bio model parameters
-pln(2).bioParam = matRad_bioModel(pln(2).radiationMode,quantityOpt, modelName);
+pln_onlyPro(2).bioParam = matRad_bioModel(pln_onlyPro(2).radiationMode,quantityOpt, modelName);
 
 % retrieve scenarios for dose calculation and optimziation
-pln(2).multScen = matRad_multScen(ct,scenGenType);
+pln_onlyPro(2).multScen = matRad_multScen(ct,scenGenType);
 
 % prepping cst 
 % placing alpha/beta ratios in cst{:,6},
@@ -158,40 +173,41 @@ cst = matRad_prepCst(cst, sparecst);
 %pln = pln(2);
 
 % Plan Wrapper
-plnJO = matRad_plnWrapper(pln);
+plnJO = matRad_plnWrapper(pln_onlyPro);
 %% Stf Wrapper
 stf = matRad_stfWrapper(ct,cst,plnJO);
 
 %% Dij Calculation
 dij = matRad_calcCombiDose(ct,stf,plnJO,cst,false);
 % Dirty Dose Calculation
-dij = matRad_calcDirtyDose(2,dij,pln);
-dij = matRad_calcmLETDose(dij,pln);
+dij = matRad_calcDirtyDose(2,dij,pln_onlyPro);
+dij = matRad_calcmLETDose(dij,pln_onlyPro);
 
 %% compress optimized results into one cube 
 %
 dij.precon = 1;
 % dij.wInit = [result_pre{1}.w; result_pre{2}.w];
-[result_pre,optimizer] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
+[result_GlioDDu,optimizer] = matRad_fluenceOptimizationJO(dij,cst,plnJO);
 %% Visualization
 slice = 65;
 
-photon_plan = result_pre{2};
-proton_plan = result_pre{1};
+photon_plan = result_GlioRefJ{2};
+proton_plan = result_GlioRefJ{1};
 
 effect = @(n,d,a,b)(n.*(a.*d+b.*d.*d))
 rbeEffect = effect(30,2,0.1,0.05)
 
+quantityOpt = 'physicalDose';
 
-totalPlan = pln(1).numOfFractions.*proton_plan.(quantityOpt) + pln(2).numOfFractions.*photon_plan.(quantityOpt);
+totalPlan = pln_onlyPro(1).numOfFractions.*proton_plan.(quantityOpt) + pln_onlyPro(2).numOfFractions.*photon_plan.(quantityOpt);
 
 f = figure;
 subplot(1,3,1);
-    imagesc(proton_plan.(quantityOpt)(:,:,slice).*pln(1).numOfFractions);
+    imagesc(proton_plan.(quantityOpt)(:,:,slice).*pln_onlyPro(1).numOfFractions);
     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
     title('Proton Plan');
 subplot(1,3,2);
-    imagesc(photon_plan.(quantityOpt)(:,:,slice).*pln(2).numOfFractions);
+    imagesc(photon_plan.(quantityOpt)(:,:,slice).*pln_onlyPro(2).numOfFractions);
     matRad_plotVoiContourSlice(gca(f), cst,ct, 1, 1,3,slice);
     title('Photon Plan');
 subplot(1,3,3);
@@ -203,7 +219,7 @@ subplot(1,3,3);
 %%
 plane = 3;
 slice = 65;
-cube = result_pre{1}.physicalDose .* pln(1).numOfFractions;
+cube = result_GlioRefJ{1}.physicalDose .* pln_onlyPro(1).numOfFractions;
 doseWindow = [0 70];%[0 max(cube(:))];
 %isoStep = [0:0.1*doseWindow(2):doseWindow(2)];
 figure,
@@ -213,14 +229,14 @@ title(['proton physical dose'])
 zoom(1.5)
 
 subplot(1,3,2)
-cube = result_pre{2}.physicalDose .* pln(2).numOfFractions;
+cube = result_pre{2}.physicalDose .* pln_onlyPro(2).numOfFractions;
 doseWindow = [0 70];
 %isoStep = [0:0.1*doseWindow(2):doseWindow(2)];
 matRad_plotSliceWrapper(gca,ct,cst,1,cube,plane,slice,[],[],colorcube,[],doseWindow);
 title(['photon physical dose'])
 zoom(1.5)
 
-totalPlan = pln(1).numOfFractions.*proton_plan.physicalDose + pln(2).numOfFractions.*photon_plan.physicalDose;
+totalPlan = pln_onlyPro(1).numOfFractions.*proton_plan.physicalDose + pln_onlyPro(2).numOfFractions.*photon_plan.physicalDose;
 
 subplot(1,3,3)
 cube = totalPlan;
@@ -232,7 +248,7 @@ zoom(1.5)
 
 %%
 if iscell(result_pre)
-[resultGUI_DDOU, result_DDOU] = matRad_accumulateCubesMixMod(result_pre, pln,ct);
+[resultGUI_DDOU, result_DDOU] = matRad_accumulateCubesMixMod(result_pre, pln_onlyPro,ct);
 end
 % pln = pln(1) ;
 % resultGUI.totalEffect = resultGUI.mod1effect + resultGUI.mod2effect;
@@ -401,20 +417,20 @@ zoom(1.5)
 
 %% calc DVH for the current cube 
 photonPlan = (30.*result_photon{1,1}.effect)./0.1; % + pln(2).numOfFractions.*result_DDovernunder{1,2}.effect)./0.1;
-LETTotalOU = (pln(1).numOfFractions.*result_LETOU{1,1}.effect + pln(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
-DDTotalOU = (pln(1).numOfFractions.*result_DDOU{1,1}.effect + pln(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
+LETTotalOU = (pln_onlyPro(1).numOfFractions.*result_LETOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
+DDTotalOU = (pln_onlyPro(1).numOfFractions.*result_DDOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
 
-LETTotalover = (pln(1).numOfFractions.*result_LET_over{1,1}.effect + pln(2).numOfFractions.*result_LET_over{1,2}.effect)./0.1;
-DDTotalover = (pln(1).numOfFractions.*result_DD_over{1,1}.effect + pln(2).numOfFractions.*result_DD_over{1,2}.effect)./0.1;
+LETTotalover = (pln_onlyPro(1).numOfFractions.*result_LET_over{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_LET_over{1,2}.effect)./0.1;
+DDTotalover = (pln_onlyPro(1).numOfFractions.*result_DD_over{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_DD_over{1,2}.effect)./0.1;
 
-LETTotalunder = (pln(1).numOfFractions.*resultLET_Target{1,1}.effect + pln(2).numOfFractions.*resultLET_Target{1,2}.effect)./0.1;
-DDTotalunder = (pln(1).numOfFractions.*resultDD_Target{1,1}.effect + pln(2).numOfFractions.*resultDD_Target{1,2}.effect)./0.1;
+LETTotalunder = (pln_onlyPro(1).numOfFractions.*resultLET_Target{1,1}.effect + pln_onlyPro(2).numOfFractions.*resultLET_Target{1,2}.effect)./0.1;
+DDTotalunder = (pln_onlyPro(1).numOfFractions.*resultDD_Target{1,1}.effect + pln_onlyPro(2).numOfFractions.*resultDD_Target{1,2}.effect)./0.1;
 
 % DDOproton = (pln(1).numOfFractions.*result_protonDDO{1,1}.effect)./0.1;
 % LETOproton = (pln(1).numOfFractions.*result_protonLETO{1,1}.effect)./0.1;
 
 onlyProtonTotal = effect(30,onlyProton{1,1}.RBExD,0.1,0.05)./0.1  ;
-refJointTotal = (pln(1).numOfFractions.*RefJoint{1,1}.effect + pln(2).numOfFractions.*RefJoint{1,2}.effect)./0.1; 
+refJointTotal = (pln_onlyPro(1).numOfFractions.*RefJoint{1,1}.effect + pln_onlyPro(2).numOfFractions.*RefJoint{1,2}.effect)./0.1; 
 % resultDVH  = matRad_calcDVH(cst,totalPlan,'cum');
 % LET_DVH = resultDVH;
 %%
@@ -917,26 +933,26 @@ grid on
 
 %% Quality indicators 
 
-DDOU_physTotal= (pln(1).numOfFractions.*result_DDOU{1,1}.effect + pln(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
-DDOU_physProton = (pln(1).numOfFractions.*result_DDOU{1,1}.effect)/0.1;
-DDOU_physPhoton = (pln(2).numOfFractions.*result_DDOU{1,2}.effect)/0.1;
+DDOU_physTotal= (pln_onlyPro(1).numOfFractions.*result_DDOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
+DDOU_physProton = (pln_onlyPro(1).numOfFractions.*result_DDOU{1,1}.effect)/0.1;
+DDOU_physPhoton = (pln_onlyPro(2).numOfFractions.*result_DDOU{1,2}.effect)/0.1;
 
-LETOU_physTotal_2 = (pln(1).numOfFractions.*result_LETOU{1,1}.effect + pln(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
-LETOU_physProton = (pln(1).numOfFractions.*result_LETOU{1,1}.effect)/0.1;
-LETOU_physPhoton = (pln(2).numOfFractions.*result_LETOU{1,2}.effect)/0.1;
+LETOU_physTotal_2 = (pln_onlyPro(1).numOfFractions.*result_LETOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
+LETOU_physProton = (pln_onlyPro(1).numOfFractions.*result_LETOU{1,1}.effect)/0.1;
+LETOU_physPhoton = (pln_onlyPro(2).numOfFractions.*result_LETOU{1,2}.effect)/0.1;
 
 DDOU_physQI =  matRad_calcQualityIndicators(cst,plnJO,DDOU_physTotal);
-DDOU_proton_physQI =  matRad_calcQualityIndicators(cst,pln(1),DDOU_physProton);
-DDOU_photon_physQI =  matRad_calcQualityIndicators(cst,pln(2),DDOU_physPhoton);
+DDOU_proton_physQI =  matRad_calcQualityIndicators(cst,pln_onlyPro(1),DDOU_physProton);
+DDOU_photon_physQI =  matRad_calcQualityIndicators(cst,pln_onlyPro(2),DDOU_physPhoton);
 
 
 LETOU_physQI_2 =  matRad_calcQualityIndicators(cst,plnJO,LETOU_physTotal_2);
-LETOU_proton_physQI = matRad_calcQualityIndicators(cst,pln(1),LETOU_physProton);
-LETOU_photon_physQI = matRad_calcQualityIndicators(cst,pln(2),LETOU_physPhoton);
+LETOU_proton_physQI = matRad_calcQualityIndicators(cst,pln_onlyPro(1),LETOU_physProton);
+LETOU_photon_physQI = matRad_calcQualityIndicators(cst,pln_onlyPro(2),LETOU_physPhoton);
 
 
-DDOU_physTotal= (pln(1).numOfFractions.*result_DDOU{1,1}.effect + pln(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
-LETOU_physTotal = (pln(1).numOfFractions.*result_LETOU{1,1}.effect + pln(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
+DDOU_physTotal= (pln_onlyPro(1).numOfFractions.*result_DDOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_DDOU{1,2}.effect)./0.1;
+LETOU_physTotal = (pln_onlyPro(1).numOfFractions.*result_LETOU{1,1}.effect + pln_onlyPro(2).numOfFractions.*result_LETOU{1,2}.effect)./0.1;
 
 DDOU_physQI =  matRad_calcQualityIndicators(cst,plnJO,DDOU_physTotal);
 LETOU_physQI =  matRad_calcQualityIndicators(cst,plnJO,LETOU_physTotal);
@@ -947,7 +963,7 @@ DDSOSUQI = matRad_calcQualityIndicators(cst,plnJO,DDOUDVH);
 onlyProtonQI = matRad_calcQualityIndicators(cst,plnJO,onlyProtonTotal);
 refJointQI = matRad_calcQualityIndicators(cst,plnJO,refJointTotal);
 
-photonQI = matRad_calcQualityIndicators(cst,pln,photonPlan);
+photonQI = matRad_calcQualityIndicators(cst,pln_onlyPro,photonPlan);
 
 %% xtract Values
 VOI = 7;
@@ -991,7 +1007,7 @@ onlyProton_DBED = effect( 30,onlyProton{1}.dirtyDose, a, b)/0.1 ;
 RefJoint_DBED = effect( n,RefJoint{1,1}.dirtyDose, a, b)/0.1 ;
 
 %%
-photon_DBED_QI = matRad_calcQualityIndicators(cst,pln,photon_DBED);
+photon_DBED_QI = matRad_calcQualityIndicators(cst,pln_onlyPro,photon_DBED);
 
 DDoverQI =  matRad_calcQualityIndicators(cstQI,plnJO,DD_DBED);
 DDunder_DQI =  matRad_calcQualityIndicators(cst,plnJO,DDunder_DBED);
@@ -1026,11 +1042,11 @@ a(4) = LEToverQI(VOI).([Quant])
 % load('FinalResultUnder.mat')
 % load('D:\postDoc\LET_Paper\OnlyProton.mat')
 
-DDunderTotal= (pln(1).numOfFractions.*resultDD_Target{1,1}.effect + pln(2).numOfFractions.*resultDD_Target{1,2}.effect)./0.1;
-LETunderTotal = (pln(1).numOfFractions.*resultLET_Target{1,1}.effect + pln(2).numOfFractions.*resultLET_Target{1,2}.effect)./0.1;
+DDunderTotal= (pln_onlyPro(1).numOfFractions.*resultDD_Target{1,1}.effect + pln_onlyPro(2).numOfFractions.*resultDD_Target{1,2}.effect)./0.1;
+LETunderTotal = (pln_onlyPro(1).numOfFractions.*resultLET_Target{1,1}.effect + pln_onlyPro(2).numOfFractions.*resultLET_Target{1,2}.effect)./0.1;
 
 onlyProtonTotal = effect(30,onlyProton{1,1}.RBExD,0.1,0.05)./0.1  ;
-refJointTotal = (pln(1).numOfFractions.*RefJoint{1,1}.effect + pln(2).numOfFractions.*RefJoint{1,2}.effect)./0.1; 
+refJointTotal = (pln_onlyPro(1).numOfFractions.*RefJoint{1,1}.effect + pln_onlyPro(2).numOfFractions.*RefJoint{1,2}.effect)./0.1; 
 % resultDVH  = matRad_calcDVH(cst,totalPlan,'cum');
 % LET_DVH = resultDVH;
 %% total BED DVH
