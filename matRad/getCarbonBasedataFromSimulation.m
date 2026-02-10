@@ -22,7 +22,7 @@ machine.meta.created_by = 'matRad Team';
 machine.meta.description = 'carbon beamdata for HIT machine, simulated with TOPAS';
 machine.meta.SAD = machine_Carbon.machine.meta.SAD;
 machine.meta.BAMStoIsoDist = machine_Carbon.machine.meta.BAMStoIsoDist;
-machine.meta.machine = 'HITfixedBL_TOPAS';
+machine.meta.machine = 'HITfluenceSpectra_updatedBig';
 machine.meta.LUTspotSize = machine_Carbon.machine.meta.LUT_bxWidthminFWHM;
 
 machine.data = struct;
@@ -43,12 +43,12 @@ dataType = 'binary';
 
 %% Fitting Loop
 
-foldername = 'C:\Users\l813r\Documents\GitHub\LisaSeckler\matRad\matRad\Scripts_big\';
+foldername = 'C:\Users\l813r\Documents\GitHub\TOPAS_sim\NEW\';
 
 visBool = false;
-for i = 113
+for i = 1:numel(E)
 
-    if ismember(i, [113])
+    if ismember(i, [90])
         visBool = true;
     else
         visBool = false;
