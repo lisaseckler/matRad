@@ -29,7 +29,7 @@ end
 
 dij.doseGrid.x = ct.x(1):dij.doseGrid.resolution.x:ct.x(end);
 dij.doseGrid.y = ct.y(1):dij.doseGrid.resolution.y:ct.y(end);
-dij.doseGrid.z = ct.z(1):dij.doseGrid.resolution.z:ct.z(end);
+dij.doseGrid.z = ct.z;
 
 dij.doseGrid.dimensions  = [numel(dij.doseGrid.y) numel(dij.doseGrid.x) numel(dij.doseGrid.z)];
 dij.doseGrid.numOfVoxels = prod(dij.doseGrid.dimensions);

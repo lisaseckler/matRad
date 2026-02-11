@@ -67,8 +67,8 @@ n = numel(dvhPoints);
 dvh         = NaN * ones(1,n);
 indices     = cst{sIx,4}{1};
 numOfVoxels = numel(indices);
-valid = indices >= 1 & indices <= length(reshape(doseCube,[],1));
-doseInVoi   = doseCube(indices(valid));
+%valid = indices >= 1 & indices <= length(reshape(doseCube,[],1));
+doseInVoi   = doseCube(indices);
 
 switch dvhType
     case 'cum' % cummulative DVH
