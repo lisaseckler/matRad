@@ -80,7 +80,7 @@ for i = 1:size(cst,1)
              quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
              quantityConstrainedInstance = optiProb.BP.quantities{strcmp(quantityConstrained,quantityNames)};
              % rescale dose parameters to biological optimization quantity if required
-             constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.alphaX,cst{i,5}.betaX);
+             constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.bioParams.alphaX,cst{i,5}.bioParams.betaX);
             
             
             % rescale dose parameters to biological optimization quantity if required
@@ -230,7 +230,7 @@ for i = 1:size(cst,1)
             quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
             quantityConstrainedInstance = optiProb.BP.quantities{strcmp(quantityConstrained,quantityNames)};
             % rescale dose parameters to biological optimization quantity if required
-            constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.alphaX,cst{i,5}.betaX);
+            constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.bioParams.alphaX,cst{i,5}.bioParams.betaX);
             
             if ~exist('fJacob', 'var') || ~isfield(fJacob,quantityConstrained)
                 if isa(quantityConstrainedInstance, 'matRad_DistributionQuantity')

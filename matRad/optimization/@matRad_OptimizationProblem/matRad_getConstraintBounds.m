@@ -77,7 +77,7 @@ for  i = 1:size(cst,1)
                 quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
                 quantityConstrainedInstance = optiProb.BP.quantities{strcmp(quantityConstrained,quantityNames)};
 
-                constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.alphaX,cst{i,5}.betaX);
+                constraint = quantityConstrainedInstance.setBiologicalDosePrescriptions(constraint,cst{i,5}.bioParams.alphaX,cst{i,5}.bioParams.betaX);
   
                  cl = [cl;constraint.lowerBounds(numel(cst{i,4}{1}))];
                  cu = [cu;constraint.upperBounds(numel(cst{i,4}{1}))];

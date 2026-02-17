@@ -24,7 +24,7 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
         calcLET = true;                 % Boolean which defines if LET should be calculated
         calcBioDose = false;            % Boolean which defines if biological dose calculation shoudl be performed (alpha*dose and sqrt(beta)*dose)
         airOffsetCorrection  = true;    % Corrects WEPL for SSD difference to kernel database
-        lateralModel = 'fast';          % Lateral Model used. 'auto' uses the most accurate model available (i.e. multiple Gaussians), 'fastest' uses the most simple model. 'single','double','multi' try to force a singleGaussian or doubleGaussian model, if available
+        lateralModel = 'auto';          % Lateral Model used. 'auto' uses the most accurate model available (i.e. multiple Gaussians), 'fastest' uses the most simple model. 'single','double','multi' try to force a singleGaussian or doubleGaussian model, if available
 
         cutOffMethod = 'integral';      % or 'relative' - describes how to calculate the lateral dosimetric cutoff
 

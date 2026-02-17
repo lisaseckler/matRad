@@ -77,6 +77,7 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
 
             
             % Get normalization for each fragment
+            % dE/dx is transposed additionally for MCF_Fluence machine
             denominator = arrayfun(@(fragmentSpectrum, fragmentSP) fragmentSpectrum.fluenceSpectrum' * fragmentSP.dEdx, spectra, sp, 'UniformOutput',false);
             
             % Sum over the fragments
@@ -86,6 +87,8 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
             % Get the numerator for every fragment and quantity
             for quantityName = this.quantitiesToAverage(mask)
                 currentQuantity = quantityName{1};
+
+                % here dE/dx is also transposed
                 numerator.(currentQuantity) = arrayfun(@(fragmentSpectrum, fragmentSP, fragQuantity) fragmentSpectrum.fluenceSpectrum' * (fragmentSP.dEdx .* fragQuantity.(currentQuantity)), spectra, sp, quantity, 'UniformOutput',false);
 
                 % Sum over the fragments
