@@ -8,7 +8,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015-2026 the matRad development team.
+% Copyright 2015 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -24,7 +24,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
        shortName;               % short identifier by which matRad recognizes an engine
        name;                    % user readable name for dose engine
        possibleRadiationModes;  % radiation modes the engine is meant to process
-       %supportedQuantities;    % supported (influence) quantities. Does not include quantities that can be derived post-calculation.       
+       %supportedQuantities;    % supported (influence) quantities. Does not include quantities that can be derived post-calculation.
     end    
     
     % Public properties
@@ -33,9 +33,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         multScen;                   % scenario model to use
         voxelSubIx;                 % selection of where to calculate / store dose, empty by default
         selectVoxelsInScenarios;    % which voxels to compute in robustness scenarios
-        precision = 'double';       % floating point precision for the dij and computations.
-        enableGPU = false;          % whether to use GPU arrays (experimental) for dose calculation (if supported by subclass implementation).
-        %bioModel;                  % name of the biological model
+        %bioModel;                   % name of the biological model
     end
     
     % Protected properties with public get access
@@ -156,6 +154,8 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             else
                 plnStruct = struct();
             end
+
+            fields = fieldnames(plnStruct);
             
             %Set up warning message
             if warnWhenPropertyChanged
@@ -164,10 +164,49 @@ classdef (Abstract) matRad_DoseEngineBase < handle
                 warningMsg = '';
             end
 
-            matRad_assignPropertiesFromStruct(this,plnStruct,true,warningMsg);
+            % iterate over all fieldnames and try to set the
+            % corresponding properties inside the engine
+            if matRad_cfg.isOctave
+                c2sWarningState = warning('off','Octave:classdef-to-struct');                
+            end
+            
+            for i = 1:length(fields)
+                try
+                    field = fields{i};
+                    if matRad_ispropCompat(this,field)
+                        this.(field) = matRad_recursiveFieldAssignment(this.(field),plnStruct.(field),true,warningMsg);
+                    else
+                        matRad_cfg.dispWarning('Not able to assign property ''%s'' from pln.propDoseCalc to Dose Engine!',field);
+                    end
+                catch ME
+                % catch exceptions when the engine has no properties,
+                % which are defined in the struct.
+                % When defining an engine with custom setter and getter
+                % methods, custom exceptions can be caught here. Be
+                % careful with Octave exceptions!
+                    if ~isempty(warningMsg)
+                        matRad_cfg = MatRad_Config.instance();
+                        switch ME.identifier
+                            case 'MATLAB:noPublicFieldForClass'
+                                matRad_cfg.dispWarning('Not able to assign property from pln.propDoseCalc to Dose Engine: %s',ME.message);
+                            otherwise
+                                matRad_cfg.dispWarning('Problem while setting up engine from struct:%s %s',field,ME.message);
+                        end
+                    end
+                end
+            end
+            
+            if matRad_cfg.isOctave
+                warning(c2sWarningState.state,'Octave:classdef-to-struct');                
+            end
         end
     
         function assignBioModelPropertiesFromPln(this, plnModel, warnWhenPropertyChanged)
+
+
+            matRad_cfg = MatRad_Config.instance();
+            
+            fields = fieldnames(plnModel);
             
             %Set up warning message
             if warnWhenPropertyChanged
@@ -176,10 +215,36 @@ classdef (Abstract) matRad_DoseEngineBase < handle
                 warningMsg = '';
             end
 
-            matRad_assignPropertiesFromStruct(this,plnModel,true,warningMsg);
+            % iterate over all fieldnames and try to set the
+            % corresponding properties inside the engine
+            for i = 1:length(fields)
+                try
+                    field = fields{i};
+                    if isprop(this.bioModel,field)
+                        this.bioModel.(field) = matRad_recursiveFieldAssignment(this.bioModel.(field),plnModel.(field),warningMsg);
+                    else
+                        matRad_cfg.dispWarning('Not able to assign property ''%s'' from pln.bioModel to Biological Model!',field);
+                    end
+                catch ME
+                % catch exceptions when the engine has no properties,
+                % which are defined in the struct.
+                % When defining an engine with custom setter and getter
+                % methods, custom exceptions can be caught here. Be
+                % careful with Octave exceptions!
+                    if ~isempty(warningMsg)
+                        matRad_cfg = MatRad_Config.instance();
+                        switch ME.identifier
+                            case 'MATLAB:noPublicFieldForClass'
+                                matRad_cfg.dispWarning('Not able to assign property from pln.bioModel to Biological Model: %s',ME.message);
+                            otherwise
+                                matRad_cfg.dispWarning('Problem while setting up Biological Model from struct:%s %s',field,ME.message);
+                        end
+                    end
+                end
+            end
         end
         
-        function resultGUI = calcDoseForward(this,ct,cst,stf,w)
+        function resultGUI = calcDoseForward(this,ct,cst,stf,w) % here we can add the value for alphaX
             matRad_cfg = MatRad_Config.instance();
             if nargin < 5 && ~isfield([stf.ray],'weight')
                 matRad_cfg.dispError('No weight vector available. Please provide w or add info to stf')
@@ -215,8 +280,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             %Set direct dose calculation and compute "dij"
             this.directWeights = w;
             this.calcDoseDirect = true;
-            dij = this.calcDose(ct,cst,stf);
-            dij = this.finalizeDose(dij);
+            dij = this.calcDose(ct,cst,stf); % here we can add value: alphaX = 0.1
 
             % calculate cubes; use uniform weights here, weighting with actual fluence 
             % already performed in dij construction
@@ -226,57 +290,22 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             if ~isa(this.multScen,'matRad_ScenarioModel')
                 this.multScen = matRad_ScenarioModel.create(this.multScen,struct('numOfCtScen',ct.numOfCtScen));
             end
-           
+            
             for i = 1:this.multScen.totNumScen
                 scenSubIx = this.multScen.linearMask(i,:);
-                resultGUItmp = matRad_calcCubes(ones(dij.numOfBeams,1),dij,this.multScen.sub2scenIx(scenSubIx(1),scenSubIx(2),scenSubIx(3)));
+                resultGUItmp = matRad_calcCubes(ones(dij.numOfBeams,1),dij,this.multScen.sub2scenIx(scenSubIx(1),scenSubIx(2),scenSubIx(3)),[],cst,this);
                 if i == 1
                     resultGUI = resultGUItmp;
                 end
-                if isvector(this.multScen.scenMask) &&  this.multScen.numOfCtScen>1%ctScen
-                    resultGUI.phaseDose{i} = resultGUItmp.physicalDose;
-                    for beamIx = 1:dij.numOfBeams
-                        resultGUI.(['phaseDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
-                    end
-                    if isfield(resultGUItmp, 'alphaDoseCube') && isfield(resultGUItmp, 'SqrtBetaDoseCube')
-                        resultGUI.phaseAlphaDose{i}    = resultGUItmp.alpha .* resultGUItmp.physicalDose;
-                        resultGUI.phaseSqrtBetaDose{i} = sqrt(resultGUItmp.beta) .* resultGUItmp.physicalDose;
-                        resultGUI.phaseRBExDose{i} = resultGUItmp.RBExDose;
-                        for beamIx = 1:dij.numOfBeams
-                            resultGUI.(['phaseAlphaDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['alpha_beam', num2str(beamIx)]).*resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
-                            resultGUI.(['phaseSqrtBetaDose_beam', num2str(beamIx)]){i} = sqrt(resultGUItmp.(['beta_beam', num2str(beamIx)])).*resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
-                            resultGUI.(['phaseRBExDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['RBExDose_beam', num2str(beamIx)]);
-                        end
-                    elseif isfield(resultGUItmp,'RBExDose')
-                        resultGUI.phaseRBExDose{i} = resultGUItmp.RBExDose;
-                        for beamIx = 1:dij.numOfBeams
-                          resultGUI.(['phaseRBExDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['RBExDose_beam', num2str(beamIx)]);
-                        end
-                    end
-                else
-                    if this.multScen.totNumScen > 1
-                        resultGUI = matRad_appendResultGUI(resultGUI,resultGUItmp,false,sprintf('scen%d',i));
-                    end
-                end
-            end
-            
-            if isfield(dij,'w')
-                resultGUI.w  = dij.w;
-            else
-                resultGUI.w = w;
+                resultGUI = matRad_appendResultGUI(resultGUI,resultGUItmp,false,sprintf('scen%d',i));                
             end
 
-            if isfield(dij,'MU')
-                resultGUI.MU = dij.MU;
-            end
-
-            resultGUI = orderfields(resultGUI);
+            resultGUI.w  = w; 
         end
 
         function dij = calcDoseInfluence(this,ct,cst,stf)
             this.calcDoseDirect = false;
             dij = this.calcDose(ct,cst,stf);
-            dij = this.finalizeDose(dij);
         end
         function setDefaults(this)
             % future code for property validation on creation here
@@ -288,6 +317,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             this.selectVoxelsInScenarios    = matRad_cfg.defaults.propDoseCalc.selectVoxelsInScenarios;
         end
     end
+
     
     methods(Access  =  protected)
         
@@ -296,28 +326,21 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         % Should be called at the beginning of calcDose method.
         % Can be expanded or changed by overwriting this method and calling
         % the superclass method inside of it
-        dij = initDoseCalc(this,ct,cst,stf)   
+        
+        dij = initDoseCalc(this,ct,cst,stf);
         
         % method for finalizing the dose calculation (e.g. postprocessing
         % on dij or files
         function dij = finalizeDose(this,dij)
 
             matRad_cfg = MatRad_Config.instance();
-
-            dijStoragePrecision = matRad_underlyingTypeCompat(dij.physicalDose{1});
-            if this.calcDoseDirect
-                matRad_cfg.dispInfo('Dose stored in ''%s'' precision\n', dijStoragePrecision);
-            else
-                matRad_cfg.dispInfo('Dose influence stored in ''%s'' precision\n', dijStoragePrecision);
-            end
-
             %Close Waitbar
             if any(ishandle(this.hWaitbar))
                 delete(this.hWaitbar);
             end
 
             this.timers.full = toc(this.timers.full);
-
+            
             matRad_cfg.dispInfo('Dose calculation finished in %g seconds!\n',this.timers.full);
         end
 
@@ -360,13 +383,6 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             % Reset the timer for the next progress update
             this.lastProgressUpdate = tic;
         end
-    
-        function allows = allowsSinglePrecisionSparseDij(~)
-            matRad_cfg = MatRad_Config.instance();
-            %single precision sparse is not supported in Octave or Matlab
-            %older than R2025a.
-            allows = matRad_cfg.isMatlab & str2double(matRad_cfg.envVersion) >= 25; 
-        end
     end
     
     % Should be abstract methods but in order to satisfy the compatibility
@@ -387,16 +403,14 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         function [available,msg] = isAvailable(pln,machine)   
         % return a boolean if the engine is is available for the given pln
         % struct. Needs to be implemented in non abstract subclasses
-        %
         % input:
-        %   pln:        matRad pln struct
-        %   machine:    optional machine to avoid loading the machine from
+        % - pln:        matRad pln struct
+        % - machine:    optional machine to avoid loading the machine from
         %               disk (makes sense to use if machine already loaded)
-        %
         % output:
-        %   available:  boolean value to check if the dose engine is 
+        % - available:  boolean value to check if the dose engine is 
         %               available for the given pln/machine
-        %   msg:        msg to elaborate on availability. If not available,
+        % - msg:        msg to elaborate on availability. If not available,
         %               a msg string indicates an error during the check
         %               if available, indicates a warning that not all
         %               information was present in the machine file and

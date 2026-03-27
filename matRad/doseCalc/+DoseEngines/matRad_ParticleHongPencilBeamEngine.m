@@ -1,10 +1,12 @@
 classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencilBeamEngineAbstract
-% matRad_ParticleHongPencilBeamEngine: 
-%   Implements the Hong pencil-beam engine
+% matRad_ParticlePencilBeamEngineAbstractGaussian: 
+%   Implements an engine for particle based dose calculation 
+%   For detailed information see superclass matRad_DoseEngine
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2022-2026 the matRad development team.
+% Copyright 2022 the matRad development team. 
 % 
 % This file is part of the matRad project. It is subject to the license 
 % terms in the LICENSE file found in the top-level directory of this 
@@ -18,7 +20,7 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     properties (Constant)
-           possibleRadiationModes = {'protons', 'helium','carbon', 'VHEE'}
+           possibleRadiationModes = {'protons', 'helium','carbon'}
            name = 'Hong Particle Pencil-Beam';
            shortName = 'HongPB';
     end
@@ -28,10 +30,10 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
         function this = matRad_ParticleHongPencilBeamEngine(pln)
             % Constructor
             %
-            % call:
+            % call
             %   engine = DoseEngines.matRad_ParticleAnalyticalPencilBeamDoseEngine(ct,stf,pln,cst)
             %
-            % input:
+            % input
             %   pln:                        matRad plan meta information struct
 
             if nargin < 1
@@ -66,13 +68,6 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
                 case 'multi'
                     sigmaSq = kernels.sigmaMulti.^2 + bixel.sigmaIniSq;
                     L = sum([1 - sum(kernels.weightMulti,2), kernels.weightMulti] .* exp(-bixel.radialDist_sq ./ (2*sigmaSq))./(2*pi*sigmaSq),2);
-                case 'singleXY'
-                    %compute lateral sigma in both directions
-                    sigmaSq_x = kernels.sigmaX.^2 + bixel.sigmaIniSq;
-                    sigmaSq_y = kernels.sigmaY.^2 + bixel.sigmaIniSq;
-                    sigma_x = sqrt(sigmaSq_x);
-                    sigma_y = sqrt(sigmaSq_y);
-                    L = exp( - (bixel.latDists(:,1).^2)./(2*sigmaSq_x) - (bixel.latDists(:,2).^2)./(2*sigmaSq_y) ) ./(2*pi*sigma_x.*sigma_y);
                 otherwise
                     %Sanity check
                     matRad_cfg = MatRad_Config.instance();
@@ -97,11 +92,19 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
             if this.calcBioDose                               
                 % This updates the info in bixel adding the necessary
                 % quantities
-                bixel = this.bioModel.calcBiologicalQuantitiesForBixel(bixel,kernels);
+                bixel = this.bioModel.calcBiologicalQuantitiesForBixel(bixel,kernels,this.cstDoseGrid);
 
                 if isa(this.bioModel, 'matRad_LQBasedModel')
-                    bixel.mAlphaDose    = bixel.physicalDose .* bixel.alpha;
-                    bixel.mSqrtBetaDose = bixel.physicalDose .* sqrt(bixel.beta);
+                    if ~isfield(bixel,'zs')
+                        bixel.mAlphaDose = bixel.physicalDose .* bixel.alpha;
+                    else
+                        bixel.mAlphaDose = bixel.physicalDose .* (bixel.zs' .* this.vBetaX{1,1}(1) + this.vAlphaX{1,1}(1));
+                    end
+                    if isfield(bixel, 'sqrtBeta') && all(~isnan(bixel.sqrtBeta))
+                        bixel.mSqrtBetaDose = bixel.physicalDose .* bixel.sqrtBeta;
+                    elseif isfield(bixel, 'beta')
+                        bixel.mSqrtBetaDose = bixel.physicalDose .* sqrt(bixel.beta);                
+                    end
                 end
             end  
         end
@@ -143,16 +146,12 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
 
             dataType = machine.meta.dataType;
             if strcmp(dataType,'singleGauss')
-                checkData = all(isfield(machine.data,{'energy','depths','Z','sigma','offset','initFocus'}));
+                checkData = all(isfield(machine.data,{'energy','depths','Z','peakPos','sigma','offset','initFocus'}));
             elseif strcmp(dataType,'doubleGauss')
-                checkData = all(isfield(machine.data,{'energy','depths','Z','weight','sigma1','sigma2','offset','initFocus'}));
+                checkData = all(isfield(machine.data,{'energy','depths','Z','peakPos','weight','sigma1','sigma2','offset','initFocus'}));
             elseif strcmp(dataType,'multipleGauss')
-                checkData = all(isfield(machine.data,{'energy','depths','Z','weightMulti','sigmaMulti','offset','initFocus'}));
-            elseif strcmp(dataType,'singleGaussXY')
-                checkData = all(isfield(machine.data,{'energy','depths','Z','offset','initFocus','sigmaXY'}));
+                checkData = all(isfield(machine.data,{'energy','depths','Z','peakPos','weightMulti','sigmaMulti','offset','initFocus'}));
             else
-                matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispWarning('Machine does not contain a valid ''dataType'' field!');
                 checkData = false;
             end
             

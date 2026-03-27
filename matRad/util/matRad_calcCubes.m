@@ -1,17 +1,17 @@
-function resultGUI = matRad_calcCubes(w,dij,scenNum)
+function resultGUI = matRad_calcCubes(w,dij,scenNum,boolInterpolate,cst,pln)
 % matRad computation of all cubes for the resultGUI struct
 % which is used as result container and for visualization in matRad's GUI
 %
-% call:
+% call
 %   resultGUI = matRad_calcCubes(w,dij)
 %   resultGUI = matRad_calcCubes(w,dij,scenNum)
 %
-% input:
+% input
 %   w:       bixel weight vector
 %   dij:     dose influence matrix
 %   scenNum: optional: number of scenario to calculated (default 1)
 %
-% output:
+% output
 %   resultGUI: matRad result struct
 %
 % References
@@ -19,7 +19,7 @@ function resultGUI = matRad_calcCubes(w,dij,scenNum)
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2024-2026 the matRad development team.
+% Copyright 2024 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -32,8 +32,12 @@ function resultGUI = matRad_calcCubes(w,dij,scenNum)
 
 matRad_cfg = MatRad_Config.instance();
 
-if nargin < 3
+if  ~exist('scenNum', 'var') || isempty(scenNum)
     scenNum = 1;
+end
+
+if ~exist('boolInterpolate', 'var') || isempty(boolInterpolate)
+    boolInterpolate = true;
 end
 
 resultGUI.w = w;
@@ -55,7 +59,7 @@ beamInfo(dij.numOfBeams+1).logIx  = true(size(resultGUI.w,1),1);
 
 %% Physical Dose
 doseFields = {'physicalDose','doseToWater'};
-doseQuantities = {'','_std','_batchStd', '_MCvar'};
+doseQuantities = {'','_std','_batchStd'};
 % compute physical dose for all beams individually and together
 for j = 1:length(doseFields)
     for k = 1:length(doseQuantities)
@@ -68,11 +72,6 @@ for j = 1:length(doseFields)
                     resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix])(isnan(resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]))) = 0;
                 end
             % Handle normal fields as usual
-            elseif ~isempty(strfind(lower(doseQuantities{1}),'var'))
-                for i = 1:length(beamInfo)
-                    resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum} * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
-                    resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix])(isnan(resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]))) = 0;
-                end
             else
                 for i = 1:length(beamInfo)
                     resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum} * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
@@ -103,11 +102,17 @@ end
 
 %% RBE weighted dose
 % consider RBE for protons and skip varRBE calculation
-if isfield(dij,'RBE') && isscalar(dij.RBE)
+if isfield(dij,'RBE') && isscalar(dij.RBE) && ~ any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldnames(dij)))
     for i = 1:length(beamInfo)
         resultGUI.(['RBExDose', beamInfo(i).suffix]) = resultGUI.(['physicalDose', beamInfo(i).suffix]) * dij.RBE;
     end
 elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldnames(dij)))
+
+    if isfield(dij,'RBE') && isscalar(dij.RBE)
+        for i = 1:length(beamInfo)
+            resultGUI.(['constRBExD', beamInfo(i).suffix]) = resultGUI.(['physicalDose', beamInfo(i).suffix]) * dij.RBE;
+        end
+    end
     % Load RBE models if MonteCarlo was calculated for multiple models
     if isfield(dij,'RBE_models')
         RBE_model = cell(1,length(dij.RBE_models));
@@ -136,7 +141,27 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
 
                 % Calculate RBExDose from the effect
                 resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])                 = zeros(size(resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])));
-                resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)             = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                if strcmp(cst{1,5}.bioParams.refRadiation,'photons')
+                    resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)         = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    if ~isempty(pln.bioModel.ZstarTable)
+                        dij.ap = dij.ax;
+                        dij.ap{1,1}(dij.ap{1,1}~=0) = cst{1,5}.bioParams.alphaR;
+                        dij.bp = dij.bx;
+                        dij.bp{1,1}(dij.bp{1,1}~=0) = cst{1,5}.bioParams.betaR;
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ap{ctScen}(ix).^2 + 4 .* dij.bp{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ap{ctScen}(ix))./(2.*dij.bp{ctScen}(ix));
+                    end
+                elseif strcmp(cst{1,5}.bioParams.refRadiation,'carbon')
+                    if strcmp(class(pln.bioModel),'matRad_KernelBasedLEM')
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    elseif ~isempty(pln.bioModel.ZstarTable)
+                        dij.ac = dij.ax;
+                        dij.ac{1,1}(dij.ac{1,1}~=0) = cst{1,5}.bioParams.alphaR; % for mMKM beta remains the same
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ac{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ac{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                        %resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt((dij.ac{ctScen}(ix)./(2 .* dij.bx{ctScen}(ix))).^2 + (resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix) ./ dij.bx{ctScen}(ix))) - (dij.ac{ctScen}(ix)./(2.*dij.bx{ctScen}(ix))) .* 2.41);
+                    elseif isempty(pln.bioModel.ZstarTable)
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    end
+                end
 
                 % Divide RBExDose with the physicalDose to get the plain RBE cube
                 resultGUI.(['RBE', RBE_model{j}, beamInfo(i).suffix])                   = zeros(size(resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])));
@@ -222,20 +247,21 @@ end
 resultGUI = orderfields(resultGUI);
 
 % interpolation if dose grid does not match ct grid
-if isfield(dij,'ctGrid') && any(dij.ctGrid.dimensions~=dij.doseGrid.dimensions)
-    myFields = fieldnames(resultGUI);
-    for i = 1:numel(myFields)
-        if numel(resultGUI.(myFields{i})) == dij.doseGrid.numOfVoxels
-
-            % interpolate!
-            resultGUI.(myFields{i}) = matRad_interp3(dij.doseGrid.x,dij.doseGrid.y',dij.doseGrid.z, ...
-                resultGUI.(myFields{i}), ...
-                dij.ctGrid.x,dij.ctGrid.y',dij.ctGrid.z,'linear',0);
-
+if boolInterpolate
+    if isfield(dij,'ctGrid') && any(dij.ctGrid.dimensions~=dij.doseGrid.dimensions)
+        myFields = fieldnames(resultGUI);
+        for i = 1:numel(myFields)
+            if numel(resultGUI.(myFields{i})) == dij.doseGrid.numOfVoxels
+    
+                % interpolate!
+                resultGUI.(myFields{i}) = matRad_interp3(dij.doseGrid.x,dij.doseGrid.y',dij.doseGrid.z, ...
+                    resultGUI.(myFields{i}), ...
+                    dij.ctGrid.x,dij.ctGrid.y',dij.ctGrid.z,'linear',0);
+    
+            end
         end
     end
 end
-
 
 end
 

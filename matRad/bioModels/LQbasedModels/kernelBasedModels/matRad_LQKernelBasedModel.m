@@ -6,7 +6,7 @@ classdef (Abstract) matRad_LQKernelBasedModel < matRad_LQBasedModel
 % tissue classes.
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2023-2026 the matRad development team.
+% Copyright 2023 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -76,24 +76,6 @@ classdef (Abstract) matRad_LQKernelBasedModel < matRad_LQBasedModel
                 matRad_cfg.dispInfo('done.\n');
              else
                 matRad_cfg.dispError('Base data is missing alphaX and/or betaX!');
-            end
-
-        end
-    end
-
-    methods (Static)
-
-
-        function [alphaX, betaX] = getAvailableTissueParameters(pln)
-            
-            % load machine
-            machine = matRad_loadMachine(pln);
-            if isfield(machine.data,'alphaX') && isfield(machine.data,'betaX')
-                alphaX = machine.data(1).alphaX;
-                betaX  = machine.data(1).betaX; 
-            else
-                matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispError('The selected biological model requires AlphaX and BetaX to be set in the machine file but none was found.');
             end
 
         end

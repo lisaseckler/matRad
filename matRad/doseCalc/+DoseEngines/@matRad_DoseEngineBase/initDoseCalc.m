@@ -18,7 +18,7 @@ function [dij] = initDoseCalc(this,ct,cst,stf)
 %   dij:            matRad dij struct
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2022-2026 the matRad development team.
+% Copyright 2022 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -39,7 +39,6 @@ else
     msg = sprintf('Dose influence matrix calculation using  ''%s'' Dose Engine...',this.name);
 end
 matRad_cfg.dispInfo('%s\n',msg);
-matRad_cfg.dispInfo('Dose calculation will prefer ''%s'' where possible!\n', this.precision);
 
 % initialize waitbar
 % TODO: This should be managed from the user interface instead
@@ -83,6 +82,9 @@ dij = struct();
 if matRad_ispropCompat(this.bioModel, 'RBE') && ~isnan(this.bioModel.RBE)
     dij.RBE = this.bioModel.RBE; 
 end
+% if matRad_ispropCompat(this.bioModel, 'quantityTable') && ~isempty(this.bioModel.quantityTable)
+%     dij.bioModel = this.bioModel; 
+% end
 
 %store CT grid
 dij.ctGrid.resolution = ct.resolution;
@@ -140,7 +142,7 @@ dij.beamNum  = NaN*ones(this.numOfColumnsDij,1);
 %Default MU calibration
 dij.minMU               = zeros(this.numOfColumnsDij,1);
 dij.maxMU               = inf(this.numOfColumnsDij,1);
-dij.numParticlesPerMU = 1e6*ones(this.numOfColumnsDij,1);
+dij.numOfParticlesPerMU = 1e6*ones(this.numOfColumnsDij,1);
 
 if isempty(this.voxelSubIx)
     % take only voxels inside patient
@@ -180,10 +182,10 @@ this.VdoseGridScenIx = cellfun(@(c) ismember(this.VdoseGrid,c), tmpVdoseGridScen
 
 
 % Convert CT subscripts to world coordinates.
-this.voxWorldCoords = cast(matRad_cubeIndex2worldCoords(this.VctGrid,dij.ctGrid),this.precision);
+this.voxWorldCoords = matRad_cubeIndex2worldCoords(this.VctGrid,dij.ctGrid);
 
 % Convert dosegrid subscripts to world coordinates
-this.voxWorldCoordsDoseGrid = cast(matRad_cubeIndex2worldCoords(this.VdoseGrid,dij.doseGrid),this.precision);
+this.voxWorldCoordsDoseGrid = matRad_cubeIndex2worldCoords(this.VdoseGrid,dij.doseGrid);
 
 %Create helper masks
 this.VdoseGridMask = false(dij.doseGrid.numOfVoxels,1);

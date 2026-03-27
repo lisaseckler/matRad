@@ -1,8 +1,6 @@
-classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
-% This is class implementig a spectra-based tabulated RBE model.
-% Spectral kernels should be provided in the base data
-% The model can handle multiple tissue alphaX/betaX ratio specified by the 
-% cst structure, as long as a compatible RBEtable is provided.
+classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
+% This is class implementig a stopping power to the tabulated RBE model.
+% dE/dx data in the RBE table should be provided
 %
 % Properties of the model that can be defined by the users:
 %   RBEtableName        filename of the table to be included
@@ -14,7 +12,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 %                       with the RBE table (i.e. 'Fluence', 'EnergyDeposit')
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2023 the matRad development team.
+% Copyright 2025 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -27,7 +25,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
     
     properties (Constant)
-        model = 'TAB';
+        model = 'StPo';
         
         requiredQuantities = {'spectra','physicalDose'};
         kernelQuantities = {'spectra'};
@@ -40,7 +38,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
     end
 
     methods
-        function this = matRad_TabulatedSpectralKernelBasedModel()
+        function this = matRad_StoppingPowerModel()
             this@matRad_LQRBETabulatedModel();
             this.assignDefaultProperties();
         end
@@ -71,19 +69,12 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % Collect the spectra from the bixel, for each fragment
             % For now assume all fragments have same energy.
             % spectraEnergies = bixel.baseData.spectra.Fluence.energyBin;
-             j = 1;
+            j = 1;
             for i = this.fragmentIndexesInBaseData
                 spectraEnergies{1,j} = bixel.baseData.Fluence.spectra(i).energyBin;
                 j = j+1;
             end
-            % This is to catch situation in which binning in base data
-            % starts from zero instead of center of energy bin. This works
-            % if bin spacing is linear. If spacing is not linear, provide
-            % an energy binning that is bin-centered.
-            % if spectraEnergies(1) == 0
-            %     spectraEnergies = spectraEnergies + (spectraEnergies(2)-spectraEnergies(1))/2;
-            % end
-            % 
+            
             % Get the tissue classes within the bixel
             bixelTissueIndexes = unique(bixel.vTissueIndex)';
             
@@ -92,41 +83,53 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % Change here how this is saved into alphaE to have separate
             % fragment fields
             for i=bixelTissueIndexes
-                for j = 1:nFragments
+                %for j = 1:nFragments
                     % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false); 
                     % The index of the fragment selected here is taken directly
                     % from the table
                    
-                    [curTissueAlphaE, curTissueBetaE] = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
+                    [curTissueAlphaE{1,i}, curTissueBetaE{1,i}] = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
                     %dEdx(i,:) = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment,i),this.fragmentIndexesInTable, 'UniformOutput',false);      
-                end
-            end
-             
-            % alphaE = arrayfun(@(fragment) horzcat(curTissueAlphaE{:,fragment}), [1:numel(this.fragmentIndexesInTable)], 'UniformOutput',false);
-            % betaE  = arrayfun(@(fragment) horzcat(curTissueBetaE{:,fragment}),  [1:numel(this.fragmentIndexesInTable)], 'UniformOutput',false);
-
-            for i = 1:nFragments
-                alpha = arrayfun(@(fragment) horzcat(curTissueAlphaE{1,i}), [this.fragmentIndexesInTable(i)], 'UniformOutput',false);
-                alphaE{1,i} = alpha{1,1};
-                beta = arrayfun(@(fragment) horzcat(curTissueBetaE{1,i}), [this.fragmentIndexesInTable(i)], 'UniformOutput',false);
-                betaE{1,i} = beta{1,1};
+                %end
+                % alpha{1,i} = arrayfun(@(fragment) horzcat(curTissueAlphaE{i}{fragment}{:}), this.fragmentIndexesInTable, 'UniformOutput', false);
+                alphaE{1,i} = curTissueAlphaE{i};
+                % %alphaE{1,i} = alpha{1,1};
+                % beta{1,i} = arrayfun(@(fragment) horzcat(curTissueBetaE{i}{fragment}{:}), [this.fragmentIndexesInTable], 'UniformOutput',false);
+                %betaE{1,i} = beta{1,1};
+                betaE{1,i} = curTissueBetaE{i};
             end
 
-            % alphaE = cell2struct(alphaE, this.fragmentIndexesInTable, 2);
-            % betaE  = cell2struct(betaE,  this.fragmentIndexesInTable, 2);
 
+            for i = 1:nFragments                
+                dEdx{1,i} = matRad_interp1(this.RBEtable.data(bixelTissueIndexes).energies, this.RBEtable.data(bixelTissueIndexes).dEdx(:,i), spectraEnergies{1,i});
+                % dEdx = arrayfun(@(fragment) horzcat(dEdx{1,i}), [this.fragmentIndexesInTable(i)], 'UniformOutput',false);
+                % dEdxE{1,i} = dEdx{1,1};
+            end
+
+            % for i = 1:numel(this.fragmentIndexesInBaseData)
+            %     fragIdx = this.fragmentIndexesInBaseData(i);
+            %     meanE{i} = spectraEnergies .* bixel.baseData.Fluence.spectra(fragIdx).fluenceSpectrum(:,2:end);
+            %     dE{i} = meanE{i}(2:end) - meanE{i}(1:end-1);
+            %     dx{i} = (bixel.baseData.depths(3:end) - bixel.baseData.depths(2:end-1))';
+            %     dEdX{i} = interp1(meanE{i}(1:end-1), -dE{i}./dx{i},spectraEnergies,'spline','extrap');
+            % end
+            
             % Get the spectra kernels to be used (one for each fragment).
             %bixelSpectra = arrayfun(@(fragmentIdx) squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.fragmentIndexesInBaseData, 'UniformOutput',false);
            
             fluenceBixelSpectra = arrayfun(@(fragmentIdx)squeeze(kernel.(this.weightBy).spectra(fragmentIdx).fluenceSpectrum),this.fragmentIndexesInBaseData,'UniformOutput',false);
-
+            %bixelSpectra = arrayfun(@(fragmentIdx)fluenceBixelSpectra{fragmentIdx}.*dEdX{fragmentIdx},1:numel(fluenceBixelSpectra),'UniformOutput',false);
+            bixelSpectra = arrayfun(@(fragmentIdx)fluenceBixelSpectra{fragmentIdx}.*dEdx{fragmentIdx}',1:numel(fluenceBixelSpectra),'UniformOutput',false); % fluence times stopping power to get dose + the sum
+            
             % Get normalization for each fragment. This is sum over
             % energies
             % spectraFragmentDenominator = cellfun(@(fragment) sum(bixelSpectra.(fragment),2),this.fragmentIndexesInTable, 'UniformOutput',false);
-            spectraFragmentDenominator = cellfun(@(fragmentSpectra) sum(fragmentSpectra,2),fluenceBixelSpectra, 'UniformOutput',false);
+            %spectraFragmentDenominator = cellfun(@(fragmentSpectra) sum(fragmentSpectra,2),bixelSpectra, 'UniformOutput',false);
+            
+            spectraFragmentDenominator = sum(cell2mat(bixelSpectra), 2); % sum over the fragments
 
             % Get total normalization by summing over the fragments
-            spectraBixelDenominator = sum([spectraFragmentDenominator{:}],2);
+            %spectraBixelDenominator = sum([spectraFragmentDenominator{:}],2);
 
             % Create containers for alpha and beta for each fragment
             alphaWeightedFragmentSpectra = NaN*ones(numel(bixel.radDepths),nFragments); % only NaN
@@ -135,8 +138,8 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             for i=bixelTissueIndexes
  
                 % Get the spectrum-weighted alpha/beta for each fragment (sums over the energy bins at each bixel radDepth)
-                tmpAlphaWeightedFragmentSpectra = arrayfun(@(fragmentIdx) fluenceBixelSpectra{fragmentIdx}*alphaE{fragmentIdx}(:,i), [1:nFragments], 'UniformOutput',false);
-                tmpBetaWeightedFragmentSpectra  = arrayfun(@(fragmentIdx) fluenceBixelSpectra{fragmentIdx}*betaE{fragmentIdx}(:,i), [1:nFragments], 'UniformOutput',false);
+                tmpAlphaWeightedFragmentSpectra = arrayfun(@(fragmentIdx) bixelSpectra{fragmentIdx}*(alphaE{1,bixelTissueIndexes}{1,fragmentIdx}), [1:nFragments], 'UniformOutput',false);
+                tmpBetaWeightedFragmentSpectra  = arrayfun(@(fragmentIdx) bixelSpectra{fragmentIdx}*(betaE{1,bixelTissueIndexes}{1,fragmentIdx}), [1:nFragments], 'UniformOutput',false);
                 %tmpBetaWeightedFragmentSpectra  = cellfun(@(fragment) bixelSpectra.(fragment)*betaE.(fragment)(:,i), this.fragmentIndexesInTable, 'UniformOutput',false);
                 
                 % Put it in matrix form and sum over the fragments. Only
@@ -150,25 +153,10 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             end
 
             % Normalize the quantities
-            bixel.alpha = alphaWeightedSpectra./spectraBixelDenominator; 
-            bixel.beta  = betaWeightedSpectra./spectraBixelDenominator;
+            bixel.alpha = alphaWeightedSpectra./spectraFragmentDenominator; 
+            bixel.beta  = betaWeightedSpectra./spectraFragmentDenominator;
         end
     end
-    
-   methods
-        function obj = setFragmentIndexesInBaseData(obj, newVal)
-            obj.fragmentIndexesInBaseData = newVal;
-        end
-
-        function obj = setTissueAlphaX(obj, newAlphaX)
-            obj.tissueAlphaX = newAlphaX;
-        end
-
-        function obj = setTissueBetaX(obj, newBetaX)
-            obj.tissueBetaX = newBetaX;
-        end
-    end
-
     
     methods
 

@@ -1,17 +1,17 @@
 function f = matRad_objectiveFunction(optiProb,w,dij,cst)
 % matRad IPOPT objective function wrapper
 %
-% call:
+% call
 %   f = matRad_objectiveFuncWrapper(optiProb,w,dij,cst)
 %
-% input:
+% input
 %   optiProb: matRad optimization problem
 %   w:        beamlet/ pencil beam weight vector
 %   dij:      matRad dose influence struct
 %   cst:      matRad cst struct
 %   scenario: index of dij scenario to consider (optional: default 1)
 %
-% output:
+% output
 %   f: objective function value
 %
 % References
@@ -19,7 +19,7 @@ function f = matRad_objectiveFunction(optiProb,w,dij,cst)
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2016-2026 the matRad development team.
+% Copyright 2016 the matRad development team.
 %
 % This file is part of the matRad project. It is subject to the license
 % terms in the LICENSE file found in the top-level directory of this
@@ -30,13 +30,10 @@ function f = matRad_objectiveFunction(optiProb,w,dij,cst)
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 matRad_cfg = MatRad_Config.instance();
-
+%disp(['w = ',num2str(sum(w),10)]);
 % get current dose / effect / RBExDose vector
 optiProb.BP.compute(dij,w);
-d = optiProb.BP.GetResult();
-
-% get probabilistic quantities (nearly no overhead if empty)
-[dExp,dOmega] = optiProb.BP.GetResultProb();
+d = optiProb.BP.d;
 
 % get the used scenarios
 useScen  = optiProb.BP.scenarios;
@@ -66,27 +63,67 @@ for  i = 1:size(cst,1)
             objective = cst{i,6}{j};
             
             % only perform gradient computations for objectiveectives
+             
             if isa(objective,'DoseObjectives.matRad_DoseObjective')
-                
-                % rescale dose parameters to biological optimization quantity if required
-                objective = optiProb.BP.setBiologicalDosePrescriptions(objective,cst{i,5}.alphaX,cst{i,5}.betaX);
+% 
+%                 % rescale dose parameters to biological optimization quantity if required
+%                 objective = optiProb.BP.setBiologicalDosePrescriptions(objective,cst{i,5}.alphaX,cst{i,5}.betaX);
+% 
+%                 f = [f; objective.computeObjectiveFunction(d,cst{i,4})];
+% 
+%             end
+% 
+%         end
+%     end
+% end
+% 
+% compFunctionsIdx = cellfun(@(x) numel(x{1})>1, f, 'UniformOutput', false);
+% compFunctions = sum([f{compFunctionsIdx,:}],2);
+% compFunctions = max(compFunctions);
+% f = sum(f{~compFunctions}) + compFunctions;
 
                 % retrieve the robustness type
-                robustness = objective.robustness;
                 
+                robustness = objective.robustness;
+
+                %This is just for temporary compatibility
+                % for optQt=optiProb.BP.optimizationQuantities
+                %     if any(strcmp(optQt, {'physicalDose', 'RBExD', 'effect', 'BED', 'physicalDoseExp', 'ApproxEffect', 'MeanAverageEffect'}))
+                %         quantityOptimized = optQt{1};
+                %     end
+                % end
+                quantityOptimized = objective.quantity;
+
+
+                quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
+                quantityOptimizedInstance = optiProb.BP.quantities{strcmp(quantityOptimized,quantityNames)};
+                % rescale dose parameters to biological optimization quantity if required
+
+                alphaX = unique(dij.ax{1}(dij.ax{1} ~= 0));
+                betaX = unique(dij.bx{1}(dij.bx{1} ~= 0));
+                objective = quantityOptimizedInstance.setBiologicalDosePrescriptions(objective,alphaX,betaX);
+    
                 switch robustness
                     case 'none' % if conventional opt: just sum objectives of nominal dose
-                        for ixScen = useNominalCtScen
-                            d_i = d{ixScen}(cst{i,4}{useScen(ixScen)});
-                            f = f + objective.penalty * objective.computeDoseObjectiveFunction(d_i);
+                        if isa(quantityOptimizedInstance, 'matRad_DistributionQuantity')
+                            for ixScen = useNominalCtScen
+                                d_i = d.(quantityOptimized){ixScen}(cst{i,4}{useScen(ixScen)});
+                                f = f + objective.penalty * objective.computeDoseObjectiveFunction(d_i);
+                            end
+                        elseif isa(quantityOptimizedInstance, 'matRad_ScalarQuantity')
+                            for ixScen = useNominalCtScen
+                                d_i = d.(quantityOptimized){i};
+                                f = f + objective.penalty * objective.computeDoseObjectiveFunction(d_i);
+                            end
                         end
 
                     case 'STOCH' % if prob opt: sum up expectation value of objectives
+
                         for s = 1:numel(useScen)
                             ixScen = useScen(s);
                             ixContour = contourScen(s);
 
-                            d_i = d{ixScen}(cst{i,4}{ixContour});
+                            d_i = d.(quantityOptimized){ixScen}(cst{i,4}{ixContour});
 
                             f   = f + scenProb(s) * objective.penalty*objective.computeDoseObjectiveFunction(d_i);
 
@@ -94,16 +131,33 @@ for  i = 1:size(cst,1)
 
                     case 'PROB' % if prob opt: sum up expectation value of objectives
 
-                        d_i = dExp{1}(cst{i,4}{1});
+                        nPhases = size(d.(quantityOptimized),2);
+                        
+                        fphase = 0;
 
-                        f   = f +  objective.penalty*objective.computeDoseObjectiveFunction(d_i);
-
-                        p = objective.penalty/numel(cst{i,4}{1});
-
-                        % only one variance term per VOI
-                        if j == 1
-                            f = f + p * w' * dOmega{i,1};
+                        if isa(quantityOptimizedInstance, 'matRad_DistributionQuantity')
+                            % Need to collaps all the voxels if there is only one
+                            % expected dose distribution for all cts/phases
+                            if nPhases==1
+                                structIdxs = cat(1,cst{i,4}{useNominalCtScen});
+                                structIdxs = {unique(structIdxs)};
+                            else
+                                structIdxs = cst{i,4}(useNominalCtScen);
+                            end
+                        
+                            for phaseIdx=1:nPhases
+                                d_i = d.(quantityOptimized){phaseIdx}(structIdxs{phaseIdx});
+                                fphase(phaseIdx) = objective.penalty*objective.computeDoseObjectiveFunction(d_i);
+                            end
+                        
+                        else
+                            for phaseIdx=1:nPhases
+                                d_i = d.(quantityOptimized){i};
+                                fphase(phaseIdx) = objective.penalty*objective.computeDoseObjectiveFunction(d_i);
+                            end
                         end
+                       
+                        f = f + sum(fphase);
 
                     case 'VWWC'  % voxel-wise worst case - takes minimum dose in TARGET and maximum in OAR
                         contourIx = unique(contourScen);
@@ -170,7 +224,7 @@ for  i = 1:size(cst,1)
                     case 'OWC'   % objective-wise worst case considers the worst individual objective function value
 
                         f_OWC = zeros(numel(useScen),1);
-                        
+
                         for s = 1:numel(useScen)
                             ixScen    = useScen(s);
                             ixContour = contourScen(s);
@@ -192,14 +246,48 @@ for  i = 1:size(cst,1)
                                 fMax = max(f_OWC);
                         end
                         f = f + fMax;
-                        
+
                     otherwise
                         matRad_cfg.dispError('Robustness setting %s not supported!',objective.robustness);
 
                 end  %robustness type                              
-            end  % objective check         
-        end %objective loop       
-    end %empty check    
+             elseif isa(objective, 'OmegaObjectives.matRad_OmegaObjective')
+
+                robustness = objective.robustness;
+
+                %This is just for temporary compatibility
+                % for optQt=optiProb.BP.optimizationQuantities
+                %     if any(strcmp(optQt, {'meanVariance','vTotApprox', 'vAlpha','vBeta', 'MeanAverageEffectVariance', 'AlphaOnlyVariance','SqrtBetaOnlyVariance'}))
+                %         quantityOptimizedVariance = optQt{1};
+                %     end
+                % end
+                quantityOptimizedVariance = objective.quantity;
+                quantityNames = cellfun(@(x) x.quantityName,optiProb.BP.quantities, 'UniformOutput',false);
+                quantityOptimizedInstance = optiProb.BP.quantities{strcmp(quantityOptimizedVariance,quantityNames)};
+                % rescale dose parameters to biological optimization quantity if required
+                %objective = quantityOptimizedInstance.setBiologicalDosePrescriptions(objective,cst{i,5}.alphaX,cst{i,5}.betaX);
+
+                nPhasesOmega = size(d.(quantityOptimizedVariance),2);
+
+                 switch robustness
+                     case 'PROB'
+
+                        if nPhasesOmega==1
+                            structIdxs = cat(1,cst{i,4}{useNominalCtScen});
+                            structIdxs = {unique(structIdxs)};
+                        else
+                            structIdxs = cst{i,4}(useNominalCtScen);
+                        end
+
+                        for phaseIdx = 1:nPhasesOmega
+                            vTot = d.(quantityOptimizedVariance){i, phaseIdx};
+                            f = f + objective.penalty * objective.computeTotalVarianceObjective(vTot,structIdxs{phaseIdx});
+                        end
+                 end
+
+             end
+        end %objective loop
+    end %empty check
 end %cst structure loop
 
 
@@ -219,4 +307,34 @@ if fMax > 0
     end
 end
 %Sum up max of composite worst case part
+
 f = f + fMax;
+% 
+% 
+% v = (dij.mSqrtBetaDoseExp{1}*w).^2;%dij.mAlphaDoseExp{1}*w;% + (dij.mSqrtBetaDoseExp{1}*w).^2;
+% v = reshape(v, dij.doseGrid.dimensions);
+% % figure;
+% % imagesc(v(:,:,80));
+% 
+% plot([1:160], v(:,80,80), '.-', 'Color', 'r');
+% 
+% hold on;
+% 
+% v = dij.mAlphaDoseExp{1}*w;% + (dij.mSqrtBetaDoseExp{1}*w).^2;
+% v = reshape(v, dij.doseGrid.dimensions);
+% % figure;
+% % imagesc(v(:,:,80));
+% 
+% plot([1:160], v(:,80,80), '.-', 'Color', 'b');
+% hold on;
+% 
+% v = dij.mAlphaDoseExp{1}*w + (dij.mSqrtBetaDoseExp{1}*w).^2;
+% v = reshape(v, dij.doseGrid.dimensions);
+% % figure;
+% % imagesc(v(:,:,80));
+% 
+% plot([1:160], v(:,80,80), '.-', 'Color', 'y');
+% hold on;
+
+
+%yline(0.238);
