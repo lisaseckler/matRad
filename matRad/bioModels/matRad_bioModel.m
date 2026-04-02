@@ -1,4 +1,4 @@
-function model = matRad_bioModel(sRadiationMode, sModel)
+function model = matRad_bioModel(sRadiationMode, sModel) %providedQuantites is missing
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  matRad_bioModel
 %  This is a helper function to instantiate a matRad_BiologicalModel. This
