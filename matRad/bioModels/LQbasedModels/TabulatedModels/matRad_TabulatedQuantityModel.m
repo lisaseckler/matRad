@@ -95,8 +95,8 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
                         else
                             matRad_cfg.dispError('Biological base data and cst are inconsistent!');
                         end
-                        % check if RBEtable contains alphaX and betaX from
-                        % cst and consistency of RBEtable and cst setting
+                        % check if AlphaBetaTable contains alphaX and betaX from
+                        % cst and consistency of AlphaBetaTable and cst setting
 
                     else
                         for s = 1:numOfCtScen
@@ -127,8 +127,8 @@ classdef matRad_TabulatedQuantityModel < matRad_LQBasedModel
                         else
                             matRad_cfg.dispError('Biological base data and cst are inconsistent!');
                         end
-                        % check if RBEtable contains alphaX and betaX from
-                        % cst and consistency of RBEtable and cst setting
+                        % check if AlphaBetaTable contains alphaX and betaX from
+                        % cst and consistency of AlphaBetaTable and cst setting
 
                     else
                         for s = 1:numOfCtScen

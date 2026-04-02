@@ -68,7 +68,7 @@ for i = 1:size(cst,1)
                     %     end
                     % else
                     matRad_cfg = MatRad_Config.instance();
-                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your RBEtable.');
+                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your AlphaBetaTable.');
                     cst{i,5}.bioParams.cellLine = "HSG";
                     ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
                     bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
@@ -80,7 +80,7 @@ for i = 1:size(cst,1)
                     bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
                 else
                     matRad_cfg = MatRad_Config.instance();
-                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your RBEtable.');
+                    matRad_cfg.dispWarning = ('No cellLine selected. Default cellLine HSG is chosen. Please make sure to have it consistent with your AlphaBetaTable.');
                     cst{i,5}.bioParams.cellLine = "HSG";
                     ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
                     bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;

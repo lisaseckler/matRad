@@ -87,7 +87,7 @@ stf = matRad_generateStf(ct,cst,pln);
 
 % if an alpha-beta table is used then define the quantityTable like this
 pln.bioModel                                = matRad_bioModel(pln.radiationMode, 'doseAveragedTabulatedAlphaBeta');
-pln.bioModel.quantityTableName              = 'RBEtable_LEMI_Scholz06_AX313_BX615';
+pln.bioModel.quantityTableName              = 'AlphaBetaTable_LEMI_Scholz06_AX313_BX615';
 
 % choose the stopping power that is used to average the alpha and beta by
 % the dose (stopping power and fluence)

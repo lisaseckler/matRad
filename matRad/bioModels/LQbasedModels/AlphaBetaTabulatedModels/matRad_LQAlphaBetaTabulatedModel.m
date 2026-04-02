@@ -1,10 +1,10 @@
-classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
+classdef (Abstract) matRad_LQAlphaBetaTabulatedModel < matRad_LQBasedModel
 % This is an Abstract class implementig a tabulated RBE model.
 % The model can handle multiple tissue alphaX/betaX ratio specified by the 
-% cst structure, as long as a compatible RBEtable is provided.
+% cst structure, as long as a compatible AlphaBetaTable is provided.
 %
 % Properties of the model that can be defined by the user in pln.propDoseCalc.bioProperties:
-%   RBEtable:       name of the specific table to be included
+%   AlphaBetaTable:       name of the specific table to be included
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -20,12 +20,12 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
     properties
-        RBEtableName;
+        AlphaBetaTableName;
         includedFragments;          % Fragments to include from the RBE table. Can be "all", or a struct with filed "Z" or a struct withj fields "Z" and "A"
     end
 
     properties (SetAccess = protected, GetAccess = public)
-        RBEtable;
+        AlphaBetaTable;
         fragmentIndexesInBaseData;
         fragmentIndexesInTable;
  
@@ -34,13 +34,13 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
         availableAlphaInTable;
         availableBetaInTable;
         availableFragmentsInTable;
-        defaultRBETable;
+        defaultAlphaBetaTable;
         defaultGenericFragments;
         defaultFragmentZ;
     end
 
     methods
-        function this = matRad_LQRBETabulatedModel()
+        function this = matRad_LQAlphaBetaTabulatedModel()
             %matRad_cfg = MatRad_Config.instance();
             
             this@matRad_LQBasedModel();
@@ -48,35 +48,35 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             this.assignDefaultProperties();
             
             % This just for testing
-            %this.defaultRBETable = 'RBEtable_rapidLEM_Russo2011_longErange_LEMI30';
+            %this.defaultAlphaBetaTable = 'AlphaBetaTable_rapidLEM_Russo2011_longErange_LEMI30';
         
         end
 
-        function [alphaE,betaE] = interpolateRBETableForBixel(this,interpEnergies, fragment, tissueClass)
+        function [alphaE,betaE] = interpolateAlphaBetaTableForBixel(this,interpEnergies, fragment, tissueClass)
             % This function interpolates the correct table for the input
             % fragment and tissue class
             
-            fragmentRBEtable = this.selectDataTableForFragment(fragment,tissueClass);
+            fragmentAlphaBetaTable = this.selectDataTableForFragment(fragment,tissueClass);
             
-            alphaE = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.alpha, interpEnergies{1,fragment});
-            betaE  = matRad_interp1(fragmentRBEtable.energies, fragmentRBEtable.beta,  interpEnergies{1,fragment});
+            alphaE = matRad_interp1(fragmentAlphaBetaTable.energies, fragmentAlphaBetaTable.alpha, interpEnergies{1,fragment});
+            betaE  = matRad_interp1(fragmentAlphaBetaTable.energies, fragmentAlphaBetaTable.beta,  interpEnergies{1,fragment});
            
             
 
-            if min(fragmentRBEtable.energies(:)) > min(interpEnergies{1,fragment}(:))
+            if min(fragmentAlphaBetaTable.energies(:)) > min(interpEnergies{1,fragment}(:))
                 %matRad_cfg = MatRad_Config.instance();
                 % Switch off for now
-                %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The min energy will be set to the min energy from the RBEtable.')
-                alphaE(interpEnergies{1,fragment} < min(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(1,1);
-                betaE(interpEnergies{1,fragment} < min(fragmentRBEtable.energies))  = fragmentRBEtable.beta(1,1);
+                %matRad_cfg.dispWarning('The energy is out of the AlphaBetaTable range. The min energy will be set to the min energy from the AlphaBetaTable.')
+                alphaE(interpEnergies{1,fragment} < min(fragmentAlphaBetaTable.energies)) = fragmentAlphaBetaTable.alpha(1,1);
+                betaE(interpEnergies{1,fragment} < min(fragmentAlphaBetaTable.energies))  = fragmentAlphaBetaTable.beta(1,1);
             end
             
-            if max(fragmentRBEtable.energies(:)) < max(interpEnergies{1,fragment}(:))
+            if max(fragmentAlphaBetaTable.energies(:)) < max(interpEnergies{1,fragment}(:))
                 %matRad_cfg = MatRad_Config.instance();
                 % Switch off for now
-                %matRad_cfg.dispWarning('The energy is out of the RBEtable range. The max energy will be set to the max energy from the RBEtable.')
-                alphaE(interpEnergies{1,fragment} > max(fragmentRBEtable.energies)) = fragmentRBEtable.alpha(end,1);
-                betaE(interpEnergies{1,fragment} > max(fragmentRBEtable.energies))  = fragmentRBEtable.beta(end,1);
+                %matRad_cfg.dispWarning('The energy is out of the AlphaBetaTable range. The max energy will be set to the max energy from the AlphaBetaTable.')
+                alphaE(interpEnergies{1,fragment} > max(fragmentAlphaBetaTable.energies)) = fragmentAlphaBetaTable.alpha(end,1);
+                betaE(interpEnergies{1,fragment} > max(fragmentAlphaBetaTable.energies))  = fragmentAlphaBetaTable.beta(end,1);
             end
 
 
@@ -106,7 +106,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 for i=1:size(allAlphaBetaRatios,1)
 
                     % Check if this alpha beta ratio is available in the
-                    % RBEtable
+                    % ALphaBetaTable
                     tableDataIndex = find(ismember([this.availableAlphaInTable, this.availableBetaInTable], allAlphaBetaRatios(i,:), 'rows'));
 
                     if isempty(tableDataIndex)
@@ -132,7 +132,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             
         end
 
-        function fragmentRBEtable = selectDataTableForFragment(this,fragment,tissueClass)
+        function fragmentAlphaBetaTable = selectDataTableForFragment(this,fragment,tissueClass)
             
             % This function selects the specific fragment and tissue class
             % entry in the RBE table.
@@ -153,16 +153,16 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
             matRad_cfg = MatRad_Config.instance();
 
-            fragmentRBEtable.alpha    = this.RBEtable.data(tissueClass).alpha(:,fragment);
-            fragmentRBEtable.beta     = this.RBEtable.data(tissueClass).beta(:,fragment);
-            fragmentRBEtable.energies = this.RBEtable.data(tissueClass).energies.*this.RBEtable.data(tissueClass).includedIons(fragment).A; % RBEtable should contain energy per nucleon
+            fragmentAlphaBetaTable.alpha    = this.AlphaBetaTable.data(tissueClass).alpha(:,fragment);
+            fragmentAlphaBetaTable.beta     = this.AlphaBetaTable.data(tissueClass).beta(:,fragment);
+            fragmentAlphaBetaTable.energies = this.AlphaBetaTable.data(tissueClass).energies.*this.AlphaBetaTable.data(tissueClass).includedIons(fragment).A; % AlphaBetaTable should contain energy per nucleon
             
          
         end
 
         function updateFragmentIdxInTable(this,includedFragments)
 
-            if isempty(this.RBEtable)
+            if isempty(this.AlphaBetaTable)
                 return;
             end
 
@@ -172,8 +172,8 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 if strcmp(includedFragments, 'all')
 
                     % Collect all fragments from table
-                    selectedTableFragmentIndexes = 1:numel(this.RBEtable.data(1).includedIons);
-                    matRad_cfg.dispInfo(sprintf('%d fragments found in RBEtable\n', numel(selectedTableFragmentIndexes)));
+                    selectedTableFragmentIndexes = 1:numel(this.AlphaBetaTable.data(1).includedIons);
+                    matRad_cfg.dispInfo(sprintf('%d fragments found in AlphaBetaTable\n', numel(selectedTableFragmentIndexes)));
                 else
                     matRad_cfg.dispError(sprintf('Unrecognized option: "%s" for includedFragments', includedFragments));
                 end
@@ -202,91 +202,6 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
             this.fragmentIndexesInTable = selectedTableFragmentIndexes;
         end
-
-        % function energies = getFragmentEnergiesFromTable(this, abRatioIndex, fragment, eUnits)
-        %     % Converts energies in MeV/u to MeV if necessary. Assumes that
-        %     % the base data spectra are given in total energy. TODO: find a
-        %     % consisten way of providing this information and check
-        %     % consistency between RBEtable and base data.
-        % 
-        %     energies = this.RBEtable.data(abRatioIndex).energies;
-        % 
-        %     if strcmp(eUnits, 'MeV/u')
-        %         switch fragment
-        % 
-        %             case 'H1'
-        %                 mass = 1;
-        % 
-        %             case 'C'
-        %                 mass = 12;
-        % 
-        %         end
-        % 
-        %         energies = energies*mass;
-        %     end
-        % 
-        % end
-        % function energies = getFragmentEnergiesFromTable(this,abRatioIndex,fragment, eUnits)
-        %     %     % Converts energies in MeV/u to MeV if necessary. Assumes that
-        %     %     % the base data spectra are given in total energy. TODO: find a
-        %     %     % consisten way of providing this information and check
-        %     %     % consistency between RBEtable and base data.
-        %     %
-        %     energies = this.RBEtable.data(abRatioIndex).energies;
-        %     % this.RBEtable.meta.energyDef = input('What unit did you use, MeV/u or MeV?',"s");
-        % 
-        % 
-        %     if strcmp(eUnits, 'MeV/u')
-        %         if ~isfield(this.RBEtable.data(1),'convFragEnergy')
-        %             v = zeros(1,10);
-        %             for i = 1:size(this.RBEtable.data,2)
-        %                 this.RBEtable.data(i).convFragEnergy = struct('H1',v,'He',v,'Li',v,'Be',v,'B',v,'C',v);
-        %             end
-        %         end
-        %         %this.RBEtable.meta.consideredFragments = input('Which fragments do you want to look at? Create a string array!');
-        %         this.RBEtable.meta.consideredFragments = fragment;
-        %         switch this.RBEtable.meta.consideredFragments
-        % 
-        %             case "H1"
-        %                 mass = 1.00794;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.H1 = this.RBEtable.data(i).energies;
-        %                 end
-        %             case "He"
-        %                 mass = 4.002602;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.He = this.RBEtable.data(i).energies;
-        %                 end
-        %             case "Li"
-        %                 mass = 6.941;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.Li = this.RBEtable.data(i).energies;
-        %                 end
-        %             case "Be"
-        %                 mass = 9.012182;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.Be = this.RBEtable.data(i).energies;
-        %                 end
-        %             case "B"
-        %                 mass = 10.811;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.B = this.RBEtable.data(i).energies;
-        %                 end
-        %             case "C"
-        %                 mass = 12.0107;
-        %                 for i = 1: size(this.RBEtable.data,2)
-        %                     this.RBEtable.data(i).energies = this.RBEtable.data(i).energies*mass;
-        %                     this.RBEtable.data(i).convFragEnergy.C = this.RBEtable.data(i).energies;
-        %                 end
-        % 
-        %         end
-        %     end
-        % end
 
         function fragmentIndexesInBaseData = selectBaseDataFragmentsFromMachine(this, machine)
             % This function looks in the base data and checks that the
@@ -341,20 +256,20 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
     methods
 
         function assignDefaultProperties(this)
-            this.defaultRBETable =  'RBEtable_rapidLEMI_testTable';
+            this.defaultAlphaBetaTable =  'AlphaBetaTable_rapidLEMI_testTable';
             %this.tableFragmentIndexes = 1;
             this.defaultFragmentZ = 1;
             this.defaultGenericFragments.Z = [1,2,3,4,5,6,7,8];
             this.defaultGenericFragments.A = [1,4,7,9,11,12,14,16];
         end
 
-        function updateRBEtable(this)
+        function updateAlphaBetaTable(this)
             
-            this.RBEtable = this.loadRBEtable(this.RBEtableName);
+            this.AlphaBetaTable = this.loadAlphaBetaTable(this.AlphaBetaTableName);
 
-            this.availableAlphaInTable = [this.RBEtable.data(:).alpha]';
-            this.availableBetaInTable  = [this.RBEtable.data(:).beta]';
-            this.availableFragmentsInTable = [this.RBEtable.data(:).Z];
+            this.availableAlphaInTable = [this.AlphaBetaTable.data(:).alpha]';
+            this.availableBetaInTable  = [this.AlphaBetaTable.data(:).beta]';
+            this.availableFragmentsInTable = [this.AlphaBetaTable.data(:).Z];
 
             if ~isempty(this.includedFragments)
                 this.updateFragmentIdxInTable(this.includedFragments);
@@ -366,13 +281,13 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
             % ratio is available
 
             tableData = [];
-            if isempty(this.RBEtable)
+            if isempty(this.AlphaBetaTable)
                 matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispWarning('RBEtable not found');
+                matRad_cfg.dispWarning('AlphaBetaTable not found');
             else
-                for i=1:numel(this.RBEtable.data)
-                    if (this.RBEtable.data(i).alphaX == alphaX) && (this.RBEtable.data(i).betaX == betaX)
-                        tableData = this.RBEtable.data(i);
+                for i=1:numel(this.AlphaBetaTable.data)
+                    if (this.AlphaBetaTable.data(i).alphaX == alphaX) && (this.AlphaBetaTable.data(i).betaX == betaX)
+                        tableData = this.AlphaBetaTable.data(i);
                         continue;
                     end
                 end
@@ -384,7 +299,7 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
         end
 
         function idx = getIndexInTableForFragment(this,Z,A)
-            if isempty(this.RBEtable)
+            if isempty(this.AlphaBetaTable)
                 return;
             end
 
@@ -392,8 +307,8 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
                 A = this.getDefaultAvalueForZ(Z);
             end
 
-            availableZ = [this.RBEtable.data(:).Z];
-            availableA = [this.RBEtable.data(:).A];
+            availableZ = [this.AlphaBetaTable.data(:).Z];
+            availableA = [this.AlphaBetaTable.data(:).A];
 
             tmpZIdx = find(availableZ == Z);
             tmpAidx = find(availableA == A);
@@ -420,10 +335,10 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
     
     methods %(Setters)
         
-        function set.RBEtableName(this, value)
+        function set.AlphaBetaTableName(this, value)
 
-            this.RBEtableName = value;
-            this.updateRBEtable();
+            this.AlphaBetaTableName = value;
+            this.updateAlphaBetaTable();
 
         end
 
@@ -436,23 +351,23 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
     end
 
     methods (Static)
-        function RBEtable = loadRBEtable(fileName)
+        function AlphaBetaTable = loadAlphaBetaTable(fileName)
 
             % This function loads the specified RBE table
             matRad_cfg = MatRad_Config.instance();
 
-            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','RBEtables'),...    % default matrad folder
-                fullfile(matRad_cfg.primaryUserFolder, 'RBEtables')};             % user defined RBE table
+            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','AlphaBetaTables'),...    % default matrad folder
+                fullfile(matRad_cfg.primaryUserFolder, 'AlphaBetaTables')};             % user defined RBE table
 
             try
-                load(fullfile(searchPath{1}, [fileName, '.mat']), 'RBEtable');
+                load(fullfile(searchPath{1}, [fileName, '.mat']), 'AlphaBetaTable');
 
             catch
                 try
-                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'RBEtable');
+                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'AlphaBetaTable');
 
                 catch
-                    matRad_cfg.dispError('Cannot find RBEtable: %s', fileName);
+                    matRad_cfg.dispError('Cannot find AlphaBetaTable: %s', fileName);
                 end
             end
         end
@@ -460,12 +375,12 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
 
 
             
-        function checkTableConsistency(RBEtable, fragments)
+        function checkTableConsistency(AlphaBetaTable, fragments)
 
            % This is redundant at the moment
             matRad_cfg = MatRad_Config.instance();
 
-            availableZs = [RBEtable.data(1).includedIons.Z];
+            availableZs = [AlphaBetaTable.data(1).includedIons.Z];
             
             if any(~ismember(fragments, availableZs))
                 excludedFragments = fragments(~ismember(fragments, availableZs));
@@ -475,28 +390,28 @@ classdef (Abstract) matRad_LQRBETabulatedModel < matRad_LQBasedModel
         end
 
 
-        function checkRBEtableStructure(RBEtable)
+        function checkAlphaBetaTableStructure(AlphaBetaTable)
             % Additional function to check structure of the Table
 
             matRad_cfg = MatRad_Config.instance();
 
             % Check structure of the table
-            if ~isstruct(RBEtable)
+            if ~isstruct(AlphaBetaTable)
                 matRad_cfg.dispError('Provided Table is not a struct!');
             end
 
-            if ~isequal(fieldnames(RBEtable), {'meta', 'data'}')
+            if ~isequal(fieldnames(AlphaBetaTable), {'meta', 'data'}')
 
                 matRad_cfg.dispError('Provided Table does not contain meta and data fields');
 
             end
 
-            numOfTissues = numel(RBEtable.data);
-            tissueAlphaBetaRatios = [RBEtable.data.alphaX]./[RBEtable.data.betaX];
+            numOfTissues = numel(AlphaBetaTable.data);
+            tissueAlphaBetaRatios = [AlphaBetaTable.data.alphaX]./[AlphaBetaTable.data.betaX];
 
-            includedIons = RBEtable.data(1).includedIons;
+            includedIons = AlphaBetaTable.data(1).includedIons;
 
-            matRad_cfg.dispInfo('%2u tissues found in RBEtable\n', numOfTissues);
+            matRad_cfg.dispInfo('%2u tissues found in AlphaBetaTable\n', numOfTissues);
             matRad_cfg.dispInfo('with alpha/beta reatios of:\n');
 
             for tIdx = tissueAlphaBetaRatios

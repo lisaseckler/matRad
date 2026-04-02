@@ -1,9 +1,9 @@
-classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
+classdef matRad_StoppingPowerModel < matRad_LQAlphaBetaTabulatedModel
 % This is class implementig a stopping power to the tabulated RBE model.
-% dE/dx data in the RBE table should be provided
+% dE/dx data in the AlphaBetaTable should be provided
 %
 % Properties of the model that can be defined by the users:
-%   RBEtableName        filename of the table to be included
+%   AlphaBetaTableName        filename of the table to be included
 %
 %   fragmentIndexesInTable  specifies which fragments to include in the
 %                       biological calculation (i.e. 'H', 'He', 'C',...)
@@ -39,7 +39,7 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
 
     methods
         function this = matRad_StoppingPowerModel()
-            this@matRad_LQRBETabulatedModel();
+            this@matRad_LQAlphaBetaTabulatedModel();
             this.assignDefaultProperties();
         end
 
@@ -62,7 +62,7 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
             % sums are performed over energy and fragments
 
 
-            bixel = calcBiologicalQuantitiesForBixel@matRad_LQRBETabulatedModel(this,bixel);
+            bixel = calcBiologicalQuantitiesForBixel@matRad_LQAlphaBetaTabulatedModel(this,bixel);
 
             nFragments = numel(this.fragmentIndexesInBaseData);
 
@@ -84,12 +84,12 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
             % fragment fields
             for i=bixelTissueIndexes
                 %for j = 1:nFragments
-                    % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false); 
+                    % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false); 
                     % The index of the fragment selected here is taken directly
                     % from the table
                    
-                    [curTissueAlphaE{1,i}, curTissueBetaE{1,i}] = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
-                    %dEdx(i,:) = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment,i),this.fragmentIndexesInTable, 'UniformOutput',false);      
+                    [curTissueAlphaE{1,i}, curTissueBetaE{1,i}] = arrayfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
+                    %dEdx(i,:) = arrayfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment,i),this.fragmentIndexesInTable, 'UniformOutput',false);      
                 %end
                 % alpha{1,i} = arrayfun(@(fragment) horzcat(curTissueAlphaE{i}{fragment}{:}), this.fragmentIndexesInTable, 'UniformOutput', false);
                 alphaE{1,i} = curTissueAlphaE{i};
@@ -101,7 +101,7 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
 
 
             for i = 1:nFragments                
-                dEdx{1,i} = matRad_interp1(this.RBEtable.data(bixelTissueIndexes).energies, this.RBEtable.data(bixelTissueIndexes).dEdx(:,i), spectraEnergies{1,i});
+                dEdx{1,i} = matRad_interp1(this.AlphaBetaTable.data(bixelTissueIndexes).energies, this.AlphaBetaTable.data(bixelTissueIndexes).dEdx(:,i), spectraEnergies{1,i});
                 % dEdx = arrayfun(@(fragment) horzcat(dEdx{1,i}), [this.fragmentIndexesInTable(i)], 'UniformOutput',false);
                 % dEdxE{1,i} = dEdx{1,1};
             end
@@ -162,7 +162,7 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
 
         function assignDefaultProperties(this)
             
-            assignDefaultProperties@matRad_LQRBETabulatedModel(this);
+            assignDefaultProperties@matRad_LQAlphaBetaTabulatedModel(this);
             this.weightBy = 'Fluence';
             
         end
@@ -191,8 +191,8 @@ classdef matRad_StoppingPowerModel < matRad_LQRBETabulatedModel
             end
 
 
-            if ~isempty(this.RBEtable)
-                this.checkTableConsistency(this.RBEtable, this.fragmentIndexesInTable);
+            if ~isempty(this.AlphaBetaTable)
+                this.checkTableConsistency(this.AlphaBetaTable, this.fragmentIndexesInTable);
             end
 
         end

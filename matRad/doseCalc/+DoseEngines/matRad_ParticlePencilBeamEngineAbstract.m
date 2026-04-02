@@ -481,7 +481,7 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
 
                 this.bioKernelQuantities = this.bioModel.kernelQuantities;
                 [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
-                % elseif isa(this.bioModel,'matRad_LQRBETabulatedModel')
+                % elseif isa(this.bioModel,'matRad_LQAlphaBetaTabulatedModel')
                 %     baseDataFragmentIndexes  = this.bioModel.selectBaseDataFragmentsFromMachine(this.machine);
                 %     this.bioKernelQuantities = this.bioModel.getBaseDataKernels(baseDataFragmentIndexes);
                 %     [this.vTissueIndex] = this.bioModel.getTissueInformation(this.machine,this.cstDoseGrid,dij,this.vAlphaX, this.vBetaX,this.VdoseGrid, this.VdoseGridScenIx);
@@ -503,7 +503,7 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
                             dij.cellLine = this.cstDoseGrid{i,5}.bioParams.cellLine;
                             %if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.cellType)
                                 if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.quantityTable.meta.modelParameters.cellLine)
-                                    matRad_cf.dispError('You selected a cell line that is not the one in your RBEtable. Please select one that fits.')
+                                    matRad_cf.dispError('You selected a cell line that is not the one in your AlphaBetaTable. Please select one that fits.')
                                 end
                             %end
                         % elseif isfield(this.cstDoseGrid{i,5},'alphaX') && isfield(this.cstDoseGrid{i,5},'betaX') && isfield(this.bioModel.quantityTable.meta, 'alphaX') && isfield(this.bioModel.quantityTable.meta,'betaX')

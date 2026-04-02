@@ -87,7 +87,7 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             tableData = [];
             if isempty(this.quantityTable)
                 matRad_cfg = MatRad_Config.instance();
-                matRad_cfg.dispWarning('RBEtable not found');
+                matRad_cfg.dispWarning('AlphaBetaTable not found');
             elseif isfield(this.quantityTable.meta,'alphaX') && isfield(this.quantityTable.meta,'betaX')
                 for i=1:numel(this.quantityTable.meta.alphaX)
                     if (this.quantityTable.meta.alphaX(i) == alphaX) && (this.quantityTable.meta.betaX(i) == betaX)
@@ -123,23 +123,23 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
     end
 
     methods (Static)
-        function RBEtable = loadTable(fileName)
+        function AlphaBetaTable = loadTable(fileName)
 
             % This function loads the specified RBE table
             matRad_cfg = MatRad_Config.instance();
 
-            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','RBEtables'),...    % default matrad folder
-                fullfile(matRad_cfg.primaryUserFolder, 'RBEtables')};             % user defined RBE table
+            searchPath = {fullfile(matRad_cfg.matRadSrcRoot,'bioModels','AlphaBetaTables'),...    % default matrad folder
+                fullfile(matRad_cfg.primaryUserFolder, 'AlphaBetaTables')};             % user defined RBE table
 
             try
-                load(fullfile(searchPath{1}, [fileName, '.mat']), 'RBEtable');
+                load(fullfile(searchPath{1}, [fileName, '.mat']), 'AlphaBetaTable');
 
             catch
                 try
-                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'RBEtable');
+                    load(fullfile(searchPath{2}, [fileName, '.mat']), 'AlphaBetaTable');
 
                 catch
-                    matRad_cfg.dispError('Cannot find RBEtable: %s', fileName);
+                    matRad_cfg.dispError('Cannot find AlphaBetaTable: %s', fileName);
                 end
             end
         end

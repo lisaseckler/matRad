@@ -1,11 +1,11 @@
-classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
+classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQAlphaBetaTabulatedModel
 % This is class implementig a spectra-based tabulated RBE model.
 % Spectral kernels should be provided in the base data
 % The model can handle multiple tissue alphaX/betaX ratio specified by the 
-% cst structure, as long as a compatible RBEtable is provided.
+% cst structure, as long as a compatible AlphaBetaTable is provided.
 %
 % Properties of the model that can be defined by the users:
-%   RBEtableName        filename of the table to be included
+%   AlphaBetaTableName        filename of the table to be included
 %
 %   fragmentIndexesInTable  specifies which fragments to include in the
 %                       biological calculation (i.e. 'H', 'He', 'C',...)
@@ -41,7 +41,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 
     methods
         function this = matRad_TabulatedSpectralKernelBasedModel()
-            this@matRad_LQRBETabulatedModel();
+            this@matRad_LQAlphaBetaTabulatedModel();
             this.assignDefaultProperties();
         end
 
@@ -64,7 +64,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % sums are performed over energy and fragments
 
 
-            bixel = calcBiologicalQuantitiesForBixel@matRad_LQRBETabulatedModel(this,bixel);
+            bixel = calcBiologicalQuantitiesForBixel@matRad_LQAlphaBetaTabulatedModel(this,bixel);
 
             nFragments = numel(this.fragmentIndexesInBaseData);
 
@@ -93,12 +93,12 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             % fragment fields
             for i=bixelTissueIndexes
                 for j = 1:nFragments
-                    % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false); 
+                    % [curTissueAlphaE(i,:), curTissueBetaE(i,:)] = cellfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false); 
                     % The index of the fragment selected here is taken directly
                     % from the table
                    
-                    [curTissueAlphaE, curTissueBetaE] = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
-                    %dEdx(i,:) = arrayfun(@(fragment) this.interpolateRBETableForBixel(spectraEnergies, fragment,i),this.fragmentIndexesInTable, 'UniformOutput',false);      
+                    [curTissueAlphaE, curTissueBetaE] = arrayfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment, i),this.fragmentIndexesInTable, 'UniformOutput',false);
+                    %dEdx(i,:) = arrayfun(@(fragment) this.interpolateAlphaBetaTableForBixel(spectraEnergies, fragment,i),this.fragmentIndexesInTable, 'UniformOutput',false);      
                 end
             end
              
@@ -174,7 +174,7 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
 
         function assignDefaultProperties(this)
             
-            assignDefaultProperties@matRad_LQRBETabulatedModel(this);
+            assignDefaultProperties@matRad_LQAlphaBetaTabulatedModel(this);
             this.weightBy = 'Fluence';
             
         end
@@ -203,8 +203,8 @@ classdef matRad_TabulatedSpectralKernelBasedModel < matRad_LQRBETabulatedModel
             end
 
 
-            if ~isempty(this.RBEtable)
-                this.checkTableConsistency(this.RBEtable, this.fragmentIndexesInTable);
+            if ~isempty(this.AlphaBetaTable)
+                this.checkTableConsistency(this.AlphaBetaTable, this.fragmentIndexesInTable);
             end
 
         end

@@ -151,7 +151,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             'Scorer_RBE_LEM1','TOPAS_scorer_doseRBE_LEM1.txt.in',...
             'Scorer_RBE_WED','TOPAS_scorer_doseRBE_Wedenberg.txt.in',...
             'Scorer_RBE_MCN','TOPAS_scorer_doseRBE_McNamara.txt.in', ...
-            'Scorer_RBE_TAB', 'TOPAS_scorer_doseRBE_GenericRBETable.txt.in',...
+            'Scorer_RBE_TAB', 'TOPAS_scorer_doseRBE_GenericAlphaBetaTTable.txt.in',...
             'Scorer_RBE_Tabulated', 'TOPAS_scorer_doseRBE_tabulatedRBE.txt.in',...
             'Scorer_RBE_LEMI', 'TOPAS_scorer_doseRBE_LEMI.txt.in',...
             'Scorer_RBE_LEMII', 'TOPAS_scorer_doseRBE_LEMII.txt.in',...
@@ -233,8 +233,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 obj.radiationMode = machine.meta.radiationMode;
             end
 
-            % Create topas scorer file for RBEtable
-            % if ~isempty(obj.bioModel.RBEtable)
+            % Create topas scorer file for AlphaBetaTable
+            % if ~isempty(obj.bioModel.AlphaBetaTable)
             %     matRad_buildTOPASRBEscorer(obj,value);
             % end
 
@@ -1367,7 +1367,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                 fprintf(fID,'d:Sc/AlphaBetaX = %.4f Gy\n\n',obj.bioParameters.AlphaX/obj.bioParameters.BetaX);
 
                 if any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'doseaveragedtabulatedalphabeta')), obj.scorer.RBE_model))
-                    obj.writeGenericRBEtable(fID, obj.bioParameters.cellLineName);
+                    obj.writeGenericAlphaBetaTable(fID, obj.bioParameters.cellLineName);
                 end
                 % Update MCparam.tallies with processed scorer
                 for i = 1:length(obj.scorer.RBE_model)
@@ -1501,16 +1501,16 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
             end
         end
 
-        function writeGenericRBEtable(this,fID, cellLineName)
+        function writeGenericAlphaBetaTable(this,fID, cellLineName)
 
             matRad_cfg = MatRad_Config.instance();
 
-            RBEtableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX, this.bioParameters.cellLine);
+            AlphaBetaTableData = this.bioModel.getTableDataForAlphaBeta(this.bioParameters.AlphaX, this.bioParameters.BetaX, this.bioParameters.cellLine);
             includedIons = this.bioModel.includedFragments;
             
             ionData = [];
-            % kineticEnergies = RBEtableData(end).energies*RBEtableData(end).A;
-            kineticEnergies = RBEtableData(end).energies;
+            % kineticEnergies = AlphaBetaTableData(end).energies*AlphaBetaTableData(end).A;
+            kineticEnergies = AlphaBetaTableData(end).energies;
             for i=1:numel(includedIons)
                 currIon = [];
                 currIon.Z    = includedIons(i).Z;
@@ -1536,8 +1536,8 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         matRad_cfg.dispError(sqprintf('Ion with Z=%d not supported', currIon.Z))
                 end
 
-                currIon.Alpha = interp1(RBEtableData(i).energies, RBEtableData(i).alpha, kineticEnergies, 'linear', 'extrap');
-                currIon.Beta  = interp1(RBEtableData(i).energies, RBEtableData(i).beta,  kineticEnergies,'linear', 'extrap');
+                currIon.Alpha = interp1(AlphaBetaTableData(i).energies, AlphaBetaTableData(i).alpha, kineticEnergies, 'linear', 'extrap');
+                currIon.Beta  = interp1(AlphaBetaTableData(i).energies, AlphaBetaTableData(i).beta,  kineticEnergies,'linear', 'extrap');
 
                 ionData = [ionData, currIon];
             end

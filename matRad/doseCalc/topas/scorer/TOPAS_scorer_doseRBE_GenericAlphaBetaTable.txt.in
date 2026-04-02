@@ -1,4 +1,4 @@
-# Generic Tabulated RBE scorer
+# Generic AlphaBeta Tabulated scorer
 
 s:Sc/tabulatedAlpha/Quantity                   = "RBE_TabulatedAlphaBeta"
 s:Sc/tabulatedAlpha/Component                  = "Patient"
