@@ -33,6 +33,8 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         multScen;                   % scenario model to use
         voxelSubIx;                 % selection of where to calculate / store dose, empty by default
         selectVoxelsInScenarios;    % which voxels to compute in robustness scenarios
+        precision = 'double';       % floating point precision for the dij and computations.
+        enableGPU = false;          % whether to use GPU arrays (experimental) for dose calculation (if supported by subclass implementation).        enableGPU = false;          % whether to use GPU arrays (experimental) for dose calculation (if supported by subclass implementation).
         %bioModel;                   % name of the biological model
     end
     
@@ -244,7 +246,7 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             end
         end
         
-        function resultGUI = calcDoseForward(this,ct,cst,stf,w) % here we can add the value for alphaX
+        function resultGUI = calcDoseForward(this,ct,cst,stf,w)
             matRad_cfg = MatRad_Config.instance();
             if nargin < 5 && ~isfield([stf.ray],'weight')
                 matRad_cfg.dispError('No weight vector available. Please provide w or add info to stf')
@@ -297,15 +299,56 @@ classdef (Abstract) matRad_DoseEngineBase < handle
                 if i == 1
                     resultGUI = resultGUItmp;
                 end
-                resultGUI = matRad_appendResultGUI(resultGUI,resultGUItmp,false,sprintf('scen%d',i));                
+                for i = 1:this.multScen.totNumScen
+                scenSubIx = this.multScen.linearMask(i,:);
+                resultGUItmp = matRad_calcCubes(ones(dij.numOfBeams,1),dij,this.multScen.sub2scenIx(scenSubIx(1),scenSubIx(2),scenSubIx(3)));
+                if i == 1
+                    resultGUI = resultGUItmp;
+                end
+                if isvector(this.multScen.scenMask) &&  this.multScen.numOfCtScen>1%ctScen
+                    resultGUI.phaseDose{i} = resultGUItmp.physicalDose;
+                    for beamIx = 1:dij.numOfBeams
+                        resultGUI.(['phaseDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
+                    end
+                    if isfield(resultGUItmp, 'alphaDoseCube') && isfield(resultGUItmp, 'SqrtBetaDoseCube')
+                        resultGUI.phaseAlphaDose{i}    = resultGUItmp.alpha .* resultGUItmp.physicalDose;
+                        resultGUI.phaseSqrtBetaDose{i} = sqrt(resultGUItmp.beta) .* resultGUItmp.physicalDose;
+                        resultGUI.phaseRBExDose{i} = resultGUItmp.RBExDose;
+                        for beamIx = 1:dij.numOfBeams
+                            resultGUI.(['phaseAlphaDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['alpha_beam', num2str(beamIx)]).*resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
+                            resultGUI.(['phaseSqrtBetaDose_beam', num2str(beamIx)]){i} = sqrt(resultGUItmp.(['beta_beam', num2str(beamIx)])).*resultGUItmp.(['physicalDose_beam', num2str(beamIx)]);
+                            resultGUI.(['phaseRBExDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['RBExDose_beam', num2str(beamIx)]);
+                        end
+                    elseif isfield(resultGUItmp,'RBExDose')
+                        resultGUI.phaseRBExDose{i} = resultGUItmp.RBExDose;
+                        for beamIx = 1:dij.numOfBeams
+                          resultGUI.(['phaseRBExDose_beam', num2str(beamIx)]){i} = resultGUItmp.(['RBExDose_beam', num2str(beamIx)]);
+                        end
+                    end
+                else
+                    if this.multScen.totNumScen > 1
+                        resultGUI = matRad_appendResultGUI(resultGUI,resultGUItmp,false,sprintf('scen%d',i));
+                    end
+                end
+            end
+            
+            if isfield(dij,'w')
+                resultGUI.w  = dij.w;
+            else
+                resultGUI.w = w;
             end
 
-            resultGUI.w  = w; 
+            if isfield(dij,'MU')
+                resultGUI.MU = dij.MU;
+            end
+
+            resultGUI = orderfields(resultGUI);
         end
 
         function dij = calcDoseInfluence(this,ct,cst,stf)
             this.calcDoseDirect = false;
             dij = this.calcDose(ct,cst,stf);
+            % dij = this.finalizeDose(dij);
         end
         function setDefaults(this)
             % future code for property validation on creation here
@@ -334,13 +377,21 @@ classdef (Abstract) matRad_DoseEngineBase < handle
         function dij = finalizeDose(this,dij)
 
             matRad_cfg = MatRad_Config.instance();
+
+            dijStoragePrecision = matRad_underlyingTypeCompat(dij.physicalDose{1});
+            if this.calcDoseDirect
+                matRad_cfg.dispInfo('Dose stored in ''%s'' precision\n', dijStoragePrecision);
+            else
+                matRad_cfg.dispInfo('Dose influence stored in ''%s'' precision\n', dijStoragePrecision);
+            end
+
             %Close Waitbar
             if any(ishandle(this.hWaitbar))
                 delete(this.hWaitbar);
             end
 
             this.timers.full = toc(this.timers.full);
-            
+
             matRad_cfg.dispInfo('Dose calculation finished in %g seconds!\n',this.timers.full);
         end
 
@@ -382,6 +433,12 @@ classdef (Abstract) matRad_DoseEngineBase < handle
             
             % Reset the timer for the next progress update
             this.lastProgressUpdate = tic;
+        end
+         function allows = allowsSinglePrecisionSparseDij(~)
+            matRad_cfg = MatRad_Config.instance();
+            %single precision sparse is not supported in Octave or Matlab
+            %older than R2025a.
+            allows = matRad_cfg.isMatlab & str2double(matRad_cfg.envVersion) >= 25; 
         end
     end
     
