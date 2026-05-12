@@ -73,7 +73,7 @@ classdef MatRad_Config < handle
 
              %Set Path
             if isdeployed
-                obj.matRadRoot = [ctfroot filesep 'matRad'];
+                obj.matRadRoot = [ctfroot filesep 'deV_RBE_quantity'];
 
                 if ispc
                     userdir= getenv('USERPROFILE');
@@ -81,7 +81,7 @@ classdef MatRad_Config < handle
                     userdir= getenv('HOME');
                 end
 
-                userfolderInHomeDir = [userdir filesep 'matRad'];               
+                userfolderInHomeDir = [userdir filesep 'deV_RBE_quantity'];               
 
                 obj.userfolders = {userfolderInHomeDir};
             else
@@ -475,7 +475,7 @@ classdef MatRad_Config < handle
         end
 
         function srcRoot = get.matRadRoot(obj)
-            srcRoot = [obj.matRadRoot filesep 'matRad' filesep];
+            srcRoot = [obj.matRadRoot filesep 'deV_RBE_quantity' filesep];
         end
 
         function primaryUserFolder = get.primaryUserFolder(obj)

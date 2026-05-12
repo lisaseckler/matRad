@@ -89,7 +89,7 @@ function [dij, dijTemplate] = matRad_calcParticleDoseMultipleScenariosExtended(c
                     end
 
                     if isfield(currDij, 'mLETDose')
-                        dijScenarioMLETDose      = currDij.mLETDose;
+                        dijScenario.mLETDose      = currDij.mLETDose;
                     end
 
                     currCst = matRad_resizeCstToGrid(cst, currDij.ctGrid.x, currDij.ctGrid.y, currDij.ctGrid.z, currDij.doseGrid.x, currDij.doseGrid.y, currDij.doseGrid.z);

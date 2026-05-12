@@ -1,7 +1,7 @@
 %% Robustness analysis for Paper 
 % calculated with DirtyDoseComparison.m
 
-matRad_rc;
+%matRad_rc;
 clear
 matRad_cfg = MatRad_Config.instance();
 matRad_cfg.propOpt.defaultMaxIter = 500000;
@@ -31,12 +31,12 @@ cst{3,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 cst{3,6}{2} = struct(DoseObjectives.matRad_MeanDose(100,0));
 cst{4,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,0));
 
-%% LMO objectives
+%% DD overdosing objectives
 %cst{2,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredUnderdosingDirtyDose(100,30));
 cst_DD = cst;
 cst_DD{1,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
 cst_DD{4,6}{2} = struct(DirtyDoseObjectives.matRad_SquaredOverdosingDirtyDose(100,0));
-%% pln
+%% pln DD1
 % % meta information for treatment plan (1) 
 pln_DD1_robust(1).numOfFractions  = 5;
 pln_DD1_robust(1).radiationMode   = 'protons';           % either photons / protons / helium / carbon
@@ -133,10 +133,10 @@ cst_DD = matRad_prepCst(cst_DD, sparecst);
 % Plan Wrapper
 plnJO_DD1 = matRad_plnWrapper(pln_DD1_robust);
 
-%% Stf Wrapper
+%% Stf Wrapper DD1
 stf_DD1 = matRad_stfWrapper(ct,cst_DD,plnJO_DD1);
 
-%% Dij Calculation
+%% Dij Calculation DD1
 dij_DD1 = matRad_calcCombiDose(ct,stf_DD1,plnJO_DD1,cst_DD,false);
 % Dirty Dose Calculation
 dij_DD1 = matRad_calcDirtyDose(2,dij_DD1,pln_DD1_robust);
@@ -197,7 +197,7 @@ plnJO_DD1_robust = matRad_plnWrapper(pln_DD1_robust);
 
 %% multiple scenarios
 modality = 'protons';
-saveDirectory = 'C:\Users\l813r\Documents\GitHub\LisaSeckler\matRad\RobustScenDD_new\Protons_DD1_new';
+saveDirectory = 'C:\Users\l813r\Documents\GitHub\RobustAnalysisTG119\Protons_DD1';
 multScen_DD1 = matRad_calcParticleDoseMultipleScenariosExtended(ct,stf_DD1(1),pln_DD1_robust,cst_DD,modality,[], saveDirectory);
 
 %% pln
