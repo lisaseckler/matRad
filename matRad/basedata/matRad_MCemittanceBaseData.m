@@ -40,7 +40,7 @@ classdef matRad_MCemittanceBaseData
 
         %To force the phase space approximation even if we have the data
         forceSpectrumApproximation  = false; 
-        forceEmittanceApproximation = false;
+        forceEmittanceApproximation = true; % originally it was false
         forceFixedMU                = true;
     end
     
@@ -93,7 +93,7 @@ classdef matRad_MCemittanceBaseData
             
             obj.monteCarloData = [];
             
-            %select needed energies and according focus indices by using stf
+              %select needed energies and according focus indices by using stf
             if obj.stfCompressed
                 tmp = [stf(:).ray];
                 plannedEnergies     = [tmp.energy];
@@ -112,7 +112,7 @@ classdef matRad_MCemittanceBaseData
             end
             
             obj.selectedFocus(obj.energyIndex) = focusIndex;
-            
+
             count = 1;
             for i = 1:length(obj.energyIndex)
                 ixE = obj.energyIndex(i);
@@ -125,6 +125,13 @@ classdef matRad_MCemittanceBaseData
                         energyData.NominalEnergy    = ones(1,4) * machine.data(ixE).energy(:);
                         energyData.MeanEnergy       = machine.data(ixE).energySpectrum.mean(:);
                         energyData.EnergySpread     = machine.data(ixE).energySpectrum.sigma(:);
+                    elseif isfield(energySpectrum,'type') && strcmp(energySpectrum.type,'binned')
+                        energyData.NominalEnergy    = machine.data(ixE).energy(:);
+                        energyData.EnergySpectra    = machine.data(ixE).energySpectrum.energy_MeVpN(:);
+                        energyData.EnergyWeights    = machine.data(ixE).energySpectrum.weight(:);
+                  
+                        energyData.EnergyOffsetCorrected = machine.data(ixE).energySpectrum.energy_MeVpN(:) - interpEnergy(ixE);
+
                     else
                         energyData = obj.fitPhaseSpaceForEnergy(ixE);
                     end
@@ -598,9 +605,15 @@ classdef matRad_MCemittanceBaseData
                 
                 %At the moment coded to only take the first energy because
                 %focus settings do not apply to the energy spectrum
-                obj.machine.data(ixE).energySpectrum.type  = 'gaussian';
-                obj.machine.data(ixE).energySpectrum.mean   = [obj.monteCarloData(:,count).MeanEnergy];
-                obj.machine.data(ixE).energySpectrum.sigma = [obj.monteCarloData(:,count).EnergySpread];
+                if isfield(obj.machine.data(ixE),'energySpectrum') && strcmp(obj.machine.data(ixE).energySpectrum.type,'gaussian')
+                    %obj.machine.data(ixE).energySpectrum.type  = 'gaussian';
+                    obj.machine.data(ixE).energySpectrum.mean   = [obj.monteCarloData(:,count).MeanEnergy];
+                    obj.machine.data(ixE).energySpectrum.sigma = [obj.monteCarloData(:,count).EnergySpread];
+                elseif isfield(obj.machine.data(ixE),'energySpectrum') && strcmp(obj.machine.data(ixE).energySpectrum.type,'binned')
+                    obj.machine.data(ixE).energySpectrum.binnedSpectra = [obj.monteCarloData(:,count).EnergySpectra];
+                    obj.machine.data(ixE).energySpectrum.weights = [obj.monteCarloData(:,count).EnergyWeights];
+                    obj.machine.data(ixE).energySpectrum.offsetCorrectedEnergy = [obj.monteCarloData(:,count).EnergyOffsetCorrected];
+                end
                 
                 
                 count = count + 1;

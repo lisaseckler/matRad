@@ -520,7 +520,7 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
                             dij.cellLine = this.cstDoseGrid{i,5}.bioParams.cellLine;
                             %if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.cellType)
                                 if ~ismember(this.cstDoseGrid{i,5}.bioParams.cellLine,this.bioModel.ZstarTable.meta.modelParameters.cellLine)
-                                    matRad_cf.dispError('You selected a cell line that is not the one in your RBEtable. Please select one that fits.')
+                                    matRad_cf.dispError('You selected a cell line that is not the one in your Ztable. Please select one that fits.')
                                 end
                             %end
                         % elseif isfield(this.cstDoseGrid{i,5},'alphaX') && isfield(this.cstDoseGrid{i,5},'betaX') && isfield(this.cstDoseGrid{i,5},'alphaR') && isfield(this.bioModel.ZstarTable.meta, 'alphaX') && isfield(this.bioModel.ZstarTable.meta,'betaX') && isfield(this.bioModel.ZstarTable.meta, 'alphaR')

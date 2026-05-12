@@ -60,9 +60,12 @@ for j = 1: numel(fn)
     stf_same.(fn{j}) = matRad_generateStf(ct,cst_same.(fn{j}),pln_same.(fn{j}));
 end
 
-for j = 1: numel(fn)
-    stf_oldMachine.(fn{j}) = matRad_generateStf(ct,cst_same.(fn{j}),pln_oldMachine.(fn{j}));
-end
+stf_old.LEMI = stf_same.LEMI;
+stf_old.LEMI.machine = 'HITfixedBL';
+% 
+% for j = 1: numel(fn)
+%     stf_oldMachine.(fn{j}) = matRad_generateStf(ct,cst_same.(fn{j}),pln_oldMachine.(fn{j}));
+% end
 %stf = matRad_generateSingleBixelStf(ct,cst,pln);
 
 %% Pln RBE model
@@ -86,12 +89,13 @@ for j = 1: numel(fn)
     pln_same.(fn{j}).propDoseCalc.engine = 'HongPB';
 end
 %%
+pln_oldMachine.LEMI = pln_same.LEMI;
 pln_oldMachine.LEMI.bioModel = matRad_bioModel(pln_oldMachine.LEMI.radiationMode,'LEM');
 
 %% Dose calculation
 
 % everything is based on the LEMI optimization (weight vector)
-dij_old = matRad_calcDoseInfluence(ct,cst_same.(fn{1}),stf_oldMachine.(fn{1}),pln_oldMachine.(fn{1}));
+dij_same = matRad_calcDoseInfluence(ct,cst_same.(fn{1}),stf_same.(fn{1}),pln_same.(fn{1}));
 
 %% Optimization
 
@@ -105,17 +109,16 @@ for j = 1: numel(fn)
     end
 end
 
-resultGUI_oldMachine.LEMI2 = matRad_fluenceOptimization(dij_old,cst_same.LEMI,pln_oldMachine.LEMI);
+resultGUI.newMachine = matRad_fluenceOptimization(dij_same,cst_same.LEMI,pln_same.LEMI);
 
 %% Recalculation
-pln_oldMachine.LEMI = pln_same.LEMI;
 pln_oldMachine.LEMI.machine = 'HITfixedBL';
 
-resultGUI_oldMachine.LEMI = matRad_calcDoseForward(ct,cst_same.LEMI,stf_same.LEMI,pln_oldMachine.LEMI,resultGUI_HITspectra.LEMI.w);
+resultGUI.oldMachine = matRad_calcDoseForward(ct,cst_same.LEMI,stf_old.LEMI,pln_oldMachine.LEMI,resultGUI.newMachine.w);
 
 %% Gamma Index
 
-resultGUI_append2 = matRad_appendResultGUI(resultGUI_HITspectra.LEMI,resultGUI_oldMachine.LEMI2,true,pln_same.LEMI.propDoseCalc.engine);
+resultGUI_append2 = matRad_appendResultGUI(resultGUI.newMachine,resultGUI.oldMachine,true,pln_same.LEMI.propDoseCalc.engine);
 compDose2 = matRad_compareDose(resultGUI_append2.physicalDose, resultGUI_append2.(['physicalDose_' pln_same.LEMI.propDoseCalc.engine]), ct, cst_same.LEMI, [1, 1, 0] , 'off', pln_same.LEMI, [3, 3], 3, 'global');
 
 %% SOBPs

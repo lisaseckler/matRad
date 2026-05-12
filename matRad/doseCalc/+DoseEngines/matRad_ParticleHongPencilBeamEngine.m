@@ -92,7 +92,7 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
             if this.calcBioDose                               
                 % This updates the info in bixel adding the necessary
                 % quantities
-                bixel = this.bioModel.calcBiologicalQuantitiesForBixel(bixel,kernels);
+                bixel = this.bioModel.calcBiologicalQuantitiesForBixel(bixel,kernels,this.cstDoseGrid);
 
                 if isa(this.bioModel, 'matRad_LQBasedModel')
                     if ~isfield(bixel,'zs')

@@ -143,6 +143,13 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
                 resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])                 = zeros(size(resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])));
                 if strcmp(cst{1,5}.bioParams.refRadiation,'photons')
                     resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)         = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));
+                    if ~isempty(pln.bioModel.ZstarTable)
+                        dij.ap = dij.ax;
+                        dij.ap{1,1}(dij.ap{1,1}~=0) = cst{1,5}.bioParams.alphaR;
+                        dij.bp = dij.bx;
+                        dij.bp{1,1}(dij.bp{1,1}~=0) = cst{1,5}.bioParams.betaR;
+                        resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ap{ctScen}(ix).^2 + 4 .* dij.bp{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ap{ctScen}(ix))./(2.*dij.bp{ctScen}(ix));
+                    end
                 elseif strcmp(cst{1,5}.bioParams.refRadiation,'carbon')
                     if strcmp(class(pln.bioModel),'matRad_KernelBasedLEM')
                         resultGUI.(['RBExDose', RBE_model{j}, beamInfo(i).suffix])(ix)     = (sqrt(dij.ax{ctScen}(ix).^2 + 4 .* dij.bx{ctScen}(ix) .* resultGUI.(['effect', RBE_model{j}, beamInfo(i).suffix])(ix)) - dij.ax{ctScen}(ix))./(2.*dij.bx{ctScen}(ix));

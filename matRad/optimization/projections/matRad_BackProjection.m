@@ -282,8 +282,8 @@ classdef matRad_BackProjection < handle
                     if strcmp(currTargetQuantity, 'effect')
 
                         % This is to reproduce old branch
-                        d_pres_effect = matRad_Effect.setBiologicalDosePrescriptions(cst{targetIdx,6}{targetObjIdx}, cst{targetIdx,5}.alphaX, cst{targetIdx,5}.betaX);
-                        d_pres_effect = cellfun(@(x) x(~isinf(x)), d_pres_effect, 'UniformOutput',false);
+                        d_pres_effect = matRad_Effect.setBiologicalDosePrescriptions(cst{targetIdx,6}{targetObjIdx}, cst{targetIdx,5}.bioParams.alphaX, cst{targetIdx,5}.bioParams.betaX);
+                        d_pres_effect = cellfun(@(x) x(~isinf(x)), d_pres_effect.parameters, 'UniformOutput',false);
                         d_pres_effect = mean([d_pres_effect{:}]);
 
                         % Set biological dose prescription

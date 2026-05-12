@@ -17,7 +17,7 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             this@matRad_TabulatedDoseAveragedKernelModel;
         end
 
-        function [bixel] = calcBiologicalQuantitiesForBixel(this,bixel,kernels)
+        function [bixel] = calcBiologicalQuantitiesForBixel(this,bixel,kernels,cstDoseGrid)
             % This function assignis the interpolated kernels to the
             % correct tissue class
             
@@ -48,7 +48,7 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
                     for quantityName = correctedQuantities
                         bixel.(quantityName{1})(mask) = kernels.(quantityName{1})(mask,i);
                         if ismember('zs',quantityName)
-                            bixel.beta(:) = this.ZstarTable.meta.modelParameters.betaX;
+                            bixel.beta(:) = cstDoseGrid{1,5}.bioParams.betaX;
                         end
                     end
                 end
@@ -59,6 +59,7 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             outQuantity = interpolateQuantityOnSpectra@matRad_TabulatedDoseAveragedKernelModel(this,spectra);
             if ~isempty(this.quantityTable)
                 for i=1:numel(outQuantity)
+                    outQuantity(i).beta(outQuantity(i).beta<0) = 0; % so that we don't get a complex sqrtBeta with the MCF machine
                     outQuantity(i).sqrtBeta = sqrt(outQuantity(i).beta);
                 end
             end

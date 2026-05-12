@@ -57,6 +57,7 @@ for i = 1:size(cst,1)
                     %[ax{s}(VdoseGrid(isInVdoseGrid)),bx{s}(VdoseGrid(isInVdoseGrid))] = matRad_setDefaultBioParamerters(i,cst,cellType,quantityTable,zstarTable);
                     ax{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.alphaX;
                     bx{s}(VdoseGrid(isInVdoseGrid)) = cst{i,5}.bioParams.betaX;
+                    
                 else
                     % if isfield(cst{i,5},'alphaX') && isfield(cst{i,5},'betaX')
                     %     if isfield(quantityTable.data,'alphaX') && isfield(quantityTable.data,'betaX')
