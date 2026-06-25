@@ -60,6 +60,16 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
                 % end
                 
                 currentSpTable   = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});  % Syntax: interpolateQuantityOnTables(referenceTable, tableToInterpolate, quantityToInterpolate)
+
+                % calculating LET from stopping power table (not completely
+                % correct, only for testing)
+
+                % dividend_LET = [];
+                % denominator_LET = [];
+                % 
+                % dividend_LET = dividend_LET + sum(dEdxInterp.^2.*spectrum.fluenceSpectrum',2);
+                % denominator_LET_HIT = denominator_LET_HIT + sum(dEdxInterp.*spectrum.fluenceSpectrum',2);
+
                 quantityToWeight = this.interpolateQuantityOnSpectra(spectra);
 
                 kernels = this.computeDoseAveragedKernels(quantityToWeight, spectra, currentSpTable);

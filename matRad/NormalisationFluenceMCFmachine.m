@@ -1,6 +1,6 @@
 f = figure('WindowState','maximized');
 
-%machine_HIT = machine;
+%HIT = machine;
 
 blue = [0.35 0.7 0.9];
 orange = [0.9,0.6,0];
@@ -13,12 +13,12 @@ colors = [blue; blue; blue; orange; green; red; purple; brown];
 lineWidth = 2;
 markerSize = 15;
 
-x = machine_HIT.data(95).depths;
+x = HIT.data(95).depths;
 
 vois = [1 4 5 6 7 8];
 
 for i = vois
-    fluenceHIT = sum(machine_HIT.data(95).Fluence.spectra(i).fluenceSpectrum,1);
+    fluenceHIT = sum(HIT.data(95).Fluence.spectra(i).fluenceSpectrum,1);
     plot(x,fluenceHIT,'-', 'DisplayName',num2str(i),'Color', colors(i,:), 'LineWidth', lineWidth, 'MarkerSize',markerSize)
     hold on
     c =1;
@@ -34,11 +34,11 @@ for i = vois
     end
 end
 
-%newMCF = machine;
-x = newMCF.data(72).depths;
+%MCF = machine;
+x = MCF.data(72).depths;
 
 for i = [1 4 5 6 7 8]
-    fluenceMCF = sum(newMCF.data(72).Fluence(i).fluenceSpectrum,1);
+    fluenceMCF = sum(MCF.data(72).Fluence.spectra(i).fluenceSpectrum,1);
     plot(x,fluenceMCF,'--', 'DisplayName',num2str(i),'Color', colors(i,:), 'LineWidth', lineWidth, 'MarkerSize',markerSize)
     hold on
 end
@@ -64,22 +64,44 @@ legend ([leg{:}],names )
 %% Normalisation
 
 NormFactor = [];
-newMCF = machine;
+%newMCF = machine;
 
 for i = 1:166
-    sumFluence = sum(newMCF.data(i).Fluence(8).fluenceSpectrum,1);
+    sumFluence = sum(MCF.data(i).Fluence.spectra(8).fluenceSpectrum,1);
     maximum = max(sumFluence(:));
     NormFactor = [NormFactor maximum];
 end
 %%
 for i = 1:166
-    for j = 1:8
-        newMCF.data(i).Fluence(j).fluenceSpectrum = newMCF.data(i).Fluence(j).fluenceSpectrum ./ NormFactor(j);
+    for j = 1:10
+        MCF.data(i).Fluence.spectra(j).fluenceSpectrum = MCF.data(i).Fluence.spectra(j).fluenceSpectrum ./ NormFactor(j);
     end
 end
 
 %% saving
-machine_MCF.meta.machine = 'MCF_Fluence_updated_withoutRBE_origSingleGauss_updatedNormFluence';
-machine = machine_MCF;
+MCF.meta.machine = 'MCF_latestVersion_correctedFluence_Americans2';
+machine = MCF;
 
-save("carbon_MCF_Fluence_updated_withoutRBE_origSingleGauss_updatedNormFluence.mat","machine")
+save("carbon_MCF_latestVersion_correctedFluence_Americans2.mat","machine")
+
+%% setting the first energyBins from MCF to the ones from HIT
+
+%energyBins = [HIT.data(14).Fluence.spectra(1).energyBin(1) HIT.data(14).Fluence.spectra(2).energyBin(1) HIT.data(14).Fluence.spectra(3).energyBin(1) HIT.data(14).Fluence.spectra(4).energyBin(1) HIT.data(14).Fluence.spectra(5).energyBin(1) HIT.data(14).Fluence.spectra(6).energyBin(1) HIT.data(14).Fluence.spectra(7).energyBin(1) HIT.data(14).Fluence.spectra(8).energyBin(1) HIT.data(14).Fluence.spectra(9).energyBin(1) HIT.data(14).Fluence.spectra(10).energyBin(1) HIT.data(14).Fluence.spectra(11).energyBin(1)];
+
+for i = 1:166
+    for j = 5:7
+        % n = length(MCF.data(i).Fluence.spectra(j).fluenceSpectrum(:,2));
+        % v1 = HIT.data(1).Fluence.spectra(1).fluenceSpectrum(:,2);  % Spaltenvektor
+        % 
+        % result = [v1; zeros(n - length(v1), 1)];  % vertikale Konkatenation mit ;
+        % result = result(1:n);
+        % 
+        % MCF.data(i).Fluence.spectra(j).fluenceSpectrum(:,2) = result;
+        machine.data(i).Fluence.spectra(j).fluenceSpectrum(:,1) = 0;
+        machine.data(i).Fluence.spectra(j).fluenceSpectrum(:,2) = 0;
+        machine.data(i).Fluence.spectra(j).fluenceSpectrum(:,3) = 0;
+        machine.data(i).Fluence.spectra(j).fluenceSpectrum(:,4) = 0;
+        machine.data(i).Fluence.spectra(j).fluenceSpectrum(:,5) = 0;
+    end
+end
+
