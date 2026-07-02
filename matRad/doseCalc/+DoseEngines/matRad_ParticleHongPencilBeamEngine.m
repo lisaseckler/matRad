@@ -99,11 +99,15 @@ classdef matRad_ParticleHongPencilBeamEngine < DoseEngines.matRad_ParticlePencil
                         bixel.mAlphaDose = bixel.physicalDose .* bixel.alpha;
                     else
                         bixel.mAlphaDose = bixel.physicalDose .* (bixel.zs' .* this.vBetaX{1,1}(1) + this.vAlphaX{1,1}(1));
+                        bixel.mZstarDose = bixel.physicalDose .* bixel.zs';
                     end
                     if isfield(bixel, 'sqrtBeta') && all(~isnan(bixel.sqrtBeta))
                         bixel.mSqrtBetaDose = bixel.physicalDose .* bixel.sqrtBeta;
                     elseif isfield(bixel, 'beta')
                         bixel.mSqrtBetaDose = bixel.physicalDose .* sqrt(bixel.beta);                
+                    end
+                    if this.bioModel.calcLET
+                        bixel.mLETDose = bixel.physicalDose .* bixel.dEdx';
                     end
                 end
             end  

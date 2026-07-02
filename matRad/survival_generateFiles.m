@@ -12,24 +12,24 @@ energies = logspace(-1,log10(1000),100);
 
 
 %model = 'LEMIII';
-model = 'LEMI';
+model = 'mMKM';
 
-calculusType = 'rapidLEM_Scholz2006';
+%calculusType = 'rapidLEM_Scholz2006';
 %calculusType = 'rapidLEM_Russo2011';
 %calculusType = 'rapidMKM_MCFMKM';
 %calculusType = 'rapidMKM_Kase2008';
-%calculusType = 'rapidmMKM_Inaniwa2010';
+calculusType = 'rapidmMKM_Inaniwa2010';
 
 survivalParameters.ions = {'H','He', 'Li', 'Be', 'B', 'C','N','O'};
 survivalParameters.ionsA = [1,4,7,9,11,12,14,16];
 
 %Define parameters to compute (for the time being fix alpha/beta)
-survivalParameters.LEM_alpha0 = [0.313];
-survivalParameters.LEM_beta0  = [0.0615];
-survivalParameters.LEM_Dt     = [30];                      %Taken from LEM3 paper, figure 5 (ACCURACY OF THE LOCAL EFFECT MODEL FOR THE PREDICTION OF BIOLOGIC EFFECTS OF CARBON ION BEAMS IN VITRO AND IN VIVO)
-survivalParameters.LEM_rNucleus     = 5*ones(1,size(survivalParameters.LEM_Dt,2));
-%survivalParameters.MKM_rNucleus = 4.1;
-%survivalParameters.MKM_rDomain = 0.34;
+survivalParameters.MKM_alpha0 = [0.172];
+survivalParameters.MKM_beta0  = [0.0615];
+%survivalParameters.LEM_Dt     = [30];                      %Taken from LEM3 paper, figure 5 (ACCURACY OF THE LOCAL EFFECT MODEL FOR THE PREDICTION OF BIOLOGIC EFFECTS OF CARBON ION BEAMS IN VITRO AND IN VIVO)
+%survivalParameters.LEM_rNucleus     = 5*ones(1,size(survivalParameters.LEM_Dt,2));
+survivalParameters.MKM_rNucleus = 3.9;
+survivalParameters.MKM_rDomain = 0.32;
 
 survivalParameters.survivalParameterFileName = model;
 survivalParameters.output          = 'LQ_pars';
@@ -42,7 +42,7 @@ survivalParameters.energies  = energies;
 
 survivalParameters.wDir     = fullfile('userdata/survivalTables');
 
-survivalParameters.fileName = 'LEMI_MATLAB';
+survivalParameters.fileName = 'mMKM_MATLAB';
 survivalParameters.survivalSourcePath = '/home/lisa/Survival';
 
 
@@ -53,7 +53,7 @@ genParameterFile(survivalParameters);
 %% Read out the CSV
 %survivalParameters.csvName = [survivalParameters.fileName,'_rapidLEM_Scholz2006_LQparameters_',model,'.csv'];
 %survivalParameters.csvName = [survivalParameters.fileName,'_rapidMKM_Kase2008_LQparameters_',model,'.csv'];
-survivalParameters.csvName = ['LEMI313_O_LQparameters_LEMI.csv'];
+survivalParameters.csvName = ['mMKM01_zStar_O_LQparameters_mMKM.csv'];
 %[data,meta] = readoutCSV(fullfile('userdata/survivalTables', survivalParameters.csvName));
 [data,meta] = readoutCSV(fullfile('userdata/survivalTables',survivalParameters.csvName));
 
@@ -211,14 +211,14 @@ function genParameterFile(survivalParameters)
          fprintf(fID, '                -calculusType $calculusType \\\n');
          fprintf(fID, '                -parallelismType $parallelismType \\\n');
          fprintf(fID, '                -cellType $cellType \\\n');
-         fprintf(fID, '                -LEM_alpha0 $LEM_alpha0 \\\n');
-         fprintf(fID, '                -LEM_beta0 $LEM_beta0 \\\n');
-         fprintf(fID, '                -LEM_rNucleus $LEM_rNucleus \\\n');
-         fprintf(fID, '                -LEM_Dt $LEM_Dt \\\n');
-         %fprintf(fID, '                -MKM_alpha0 $MKM_alpha0 \\\n');
-         %fprintf(fID, '                -MKM_beta0 $MKM_beta0 \\\n');
-         %fprintf(fID, '                -MKM_rNucleus $MKM_rNucleus \\\n');
-         %fprintf(fID, '                -MKM_rDomain $MKM_rDomain \\\n');
+         %fprintf(fID, '                -LEM_alpha0 $LEM_alpha0 \\\n');
+         %fprintf(fID, '                -LEM_beta0 $LEM_beta0 \\\n');
+         %fprintf(fID, '                -LEM_rNucleus $LEM_rNucleus \\\n');
+         %fprintf(fID, '                -LEM_Dt $LEM_Dt \\\n');
+         fprintf(fID, '                -MKM_alpha0 $MKM_alpha0 \\\n');
+         fprintf(fID, '                -MKM_beta0 $MKM_beta0 \\\n');
+         fprintf(fID, '                -MKM_rNucleus $MKM_rNucleus \\\n');
+         fprintf(fID, '                -MKM_rDomain $MKM_rDomain \\\n');
          fprintf(fID, '                -ion $ion \\\n');
          fprintf(fID, '                -trackMode $trackMode \\\n');
          fprintf(fID, '                -energies $energies \\;\n');
@@ -281,8 +281,8 @@ function [data, meta] = readoutCSV(filename)
     meta.modelParameters.alphaX =   data.alphaX;
     meta.modelParameters.betaX  =   data.betaX;
     meta.modelParameters.rNucleus = rawData.r_nucleus(1); 
-    meta.modelParameters.Dt     = rawData.D_t(1);
-    %meta.modelParameters.rDomain = rawData.r_domain(1);
+    %meta.modelParameters.Dt     = rawData.D_t(1);
+    meta.modelParameters.rDomain = rawData.r_domain(1);
     meta.alphaX          = data.alphaX;
     meta.betaX           = data.betaX;
 

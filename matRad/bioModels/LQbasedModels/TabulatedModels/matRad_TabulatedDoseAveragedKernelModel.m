@@ -12,6 +12,7 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
         quantityTable;
         quantityTableName;
         ChosenCellType;
+        calcLET = false;
     end
 
     methods
@@ -59,7 +60,7 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
                 %     spectra(i).energyBin = spectra(i).energyBin./spectra(i).A;
                 % end
                 
-                currentSpTable   = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});  % Syntax: interpolateQuantityOnTables(referenceTable, tableToInterpolate, quantityToInterpolate)
+                %currentSpTable   = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});  % Syntax: interpolateQuantityOnTables(referenceTable, tableToInterpolate, quantityToInterpolate)
 
                 % calculating LET from stopping power table (not completely
                 % correct, only for testing)
@@ -70,7 +71,9 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
                 % dividend_LET = dividend_LET + sum(dEdxInterp.^2.*spectrum.fluenceSpectrum',2);
                 % denominator_LET_HIT = denominator_LET_HIT + sum(dEdxInterp.*spectrum.fluenceSpectrum',2);
 
-                quantityToWeight = this.interpolateQuantityOnSpectra(spectra);
+                %quantityToWeight = this.interpolateQuantityOnSpectra(spectra);
+
+                [quantityToWeight, currentSpTable] = this.interpolateQuantityOnSpectra(spectra);
 
                 kernels = this.computeDoseAveragedKernels(quantityToWeight, spectra, currentSpTable);
 
@@ -111,25 +114,84 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
 
         end
 
-        function outQuantity = interpolateQuantityOnSpectra(this, spectra)
+        % function outQuantity = interpolateQuantityOnSpectra(this, spectra)
+        %     outQuantity = [];
+        %     if ~isempty(this.quantityTableName) && isempty(this.ZstarTableName)
+        %         fTable = this.getTable(this.includedFragments);
+        %         outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+        %     elseif isempty(this.quantityTableName) && ~isempty(this.ZstarTableName)
+        %         zTable = this.getZstarTable(this.includedFragments);
+        %         outQuantity = this.interpolateQuantityOnTables(spectra, zTable, this.quantitiesInTable);
+        %         %outQuantity = this.interpolateQuantityOnTables(spectra, zTable, this.quantitiesInTable);
+        %     elseif ~isempty(this.quantityTableName) || ~isempty(this.ZstarTableName)
+        %         matRad_cfg = MatRad_Config.instance();
+        %         matRad_cfg.dispWarning('You selected a RBE table and a Zstar table. Both is not possible. Automatically the RBE table is chosen.');
+        %         fTable = this.getTable(this.includedFragments);
+        %         if this.calcLET
+        %            spTable = this.getSpTable(this.includedFragments);
+        %         end
+        %         outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+        %     else
+        %         matRad_cfg = MatRad_Config.instance();
+        %         matRad_cfg.dispError('You did not select a RBE table and also not a Zstar table. Please make sure to choose one.');
+        % 
+        %     end
+        % 
+        % end
+
+        function [outQuantity, currentSpTable] = interpolateQuantityOnSpectra(this, spectra)
             outQuantity = [];
+            currentSpTable = [];
+
             if ~isempty(this.quantityTableName) && isempty(this.ZstarTableName)
                 fTable = this.getTable(this.includedFragments);
+                if this.calcLET
+                    spTable = this.getSpTable(this.includedFragments);
+                    currentSpTable = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});
+                end
                 outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+
+                % Merge dEdx into outQuantity
+                if this.calcLET
+                    for i = 1:numel(outQuantity)
+                        outQuantity(i).dEdx = currentSpTable(i).dEdx;
+                    end
+                end
+
             elseif isempty(this.quantityTableName) && ~isempty(this.ZstarTableName)
                 zTable = this.getZstarTable(this.includedFragments);
+                if this.calcLET
+                    spTable = this.getSpTable(this.includedFragments);
+                    currentSpTable = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});
+                end
                 outQuantity = this.interpolateQuantityOnTables(spectra, zTable, this.quantitiesInTable);
+
+                % Merge dEdx into outQuantity
+                if this.calcLET
+                    for i = 1:numel(outQuantity)
+                        outQuantity(i).dEdx = currentSpTable(i).dEdx;
+                    end
+                end
+
             elseif ~isempty(this.quantityTableName) || ~isempty(this.ZstarTableName)
                 matRad_cfg = MatRad_Config.instance();
                 matRad_cfg.dispWarning('You selected a RBE table and a Zstar table. Both is not possible. Automatically the RBE table is chosen.');
                 fTable = this.getTable(this.includedFragments);
+                if this.calcLET
+                    spTable = this.getSpTable(this.includedFragments);
+                    currentSpTable = this.interpolateQuantityOnTables(spectra, spTable, {'dEdx'});
+                end
                 outQuantity = this.interpolateQuantityOnTables(spectra, fTable, this.quantitiesInTable);
+                if this.calcLET
+                    for i = 1:numel(outQuantity)
+                        outQuantity(i).dEdx = currentSpTable(i).dEdx;
+                    end
+                end
+
             else
                 matRad_cfg = MatRad_Config.instance();
                 matRad_cfg.dispError('You did not select a RBE table and also not a Zstar table. Please make sure to choose one.');
-
             end
-
         end
 
          function table = getTable(this, fragments)
@@ -174,7 +236,22 @@ classdef (Abstract) matRad_TabulatedDoseAveragedKernelModel < matRad_TabulatedQu
 
         function spectra = getSpectraFromMachine(this,machineData, fragments, spectraType)
             spectra = this.extractFragmentsWithZA([fragments.Z], [fragments.A],machineData.(spectraType).spectra);
-       end
+        end
+
+        % to compensate bin width differences
+        
+       % function spectra = getSpectraFromMachine(this, machineData, fragments, spectraType)
+       %     spectra = this.extractFragmentsWithZA([fragments.Z], [fragments.A], ...
+       %         machineData.(spectraType).spectra);
+       % 
+       %     % Convert bin-integrated fluence to spectral density (per MeV)
+       %     % so the dot product becomes bin-width independent
+       %     for i = 1:numel(spectra)
+       %         deltaE = diff(spectra(i).energyBin);
+       %         deltaE(end+1) = deltaE(end); % repeat last bin width for last bin
+       %         spectra(i).fluenceSpectrum = spectra(i).fluenceSpectrum ./ deltaE';
+       %     end
+       % end
 
 
     end

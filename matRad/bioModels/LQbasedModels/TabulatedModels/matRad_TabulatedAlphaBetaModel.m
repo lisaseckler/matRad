@@ -2,9 +2,9 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
 
     properties (Constant)
         model      = 'doseAveragedTabulatedAlphaBeta'
-        quantitiesToAverage = {'alpha', 'sqrtBeta', 'zs'};
+        quantitiesToAverage = {'alpha', 'sqrtBeta', 'zs','dEdx'};
 
-        quantitiesInTable = {'alpha', 'beta', 'zs'};
+        quantitiesInTable = {'alpha', 'beta', 'zs','dEdx'};
         requiredQuantities = {'Fluence'};
         possibleRadiationModes = {'protons', 'carbon', 'helium'};
 
@@ -55,9 +55,8 @@ classdef matRad_TabulatedAlphaBetaModel < matRad_TabulatedDoseAveragedKernelMode
             end       
         end
 
-        function outQuantity = interpolateQuantityOnSpectra(this, spectra)
-            outQuantity = interpolateQuantityOnSpectra@matRad_TabulatedDoseAveragedKernelModel(this,spectra);
-            if ~isempty(this.quantityTable)
+        function [outQuantity, currentSpTable] = interpolateQuantityOnSpectra(this, spectra)
+            [outQuantity, currentSpTable] = interpolateQuantityOnSpectra@matRad_TabulatedDoseAveragedKernelModel(this,spectra);            if ~isempty(this.quantityTable)
                 for i=1:numel(outQuantity)
                     outQuantity(i).beta(outQuantity(i).beta<0) = 0; % so that we don't get a complex sqrtBeta with the MCF machine
                     outQuantity(i).sqrtBeta = sqrt(outQuantity(i).beta);
