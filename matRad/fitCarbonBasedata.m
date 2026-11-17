@@ -23,8 +23,7 @@ r80 = interp1(IDD(max_ix + r80ix - 1:max_ix + r80ix + 1), ...
                  zdepth(max_ix + r80ix - 1:max_ix + r80ix + 1), 0.8 * maxIDD);
 
 % fit gaussians to radial Dose slices to get sigma 
-sigma = zeros(N,2);
-weight = zeros(N,1);
+sigma = zeros(N,1);
 
 % fit sigmas till dose reaches, a percent of max dose
 [~, ixSigmaFit] = min(abs(IDD(max_ix:end) - maxIDD));
@@ -32,82 +31,129 @@ if zdepth(max_ix+ixSigmaFit-1) < r80 + 20
     [~, ixSigmaFit] = min(abs(zdepth(max_ix:end) - (r80+20)));
 end
 
+% % Fitting Functions
+% gauss1       = @(p,x) 1./(2*pi*p.^2) * exp(-x.^2./(2*p.^2));
+% 
+% for i = 1:N %max_ix+ixSigmaFit-1
+% 
+%     % normaliseProfile
+%     profile = EnergyDepositedZR(i,:);
+%     profile = profile / (sum(profile)); 
+%     profile = profile./scoringArea;
+% 
+% 
+%     start = [params.sigma0+1];
+%     lb = [params.sigma0];
+%     ub = [params.sigma0+100];
+% 
+%     weightFit = zeros(size(profile'));
+%     weightFit(profile>0) = 1./profile(profile>0);
+%     % weightFit = zeros(size(profile'));
+%     % profileThreshold = 0.2 * max(profile);
+%     % weightFit(profile>profileThreshold) = 1./profile(profile>profileThreshold);
+% 
+% 
+%     objective = @(p) sum(weightFit' .* (gauss1(p,rdepth) - profile).^2 );
+% 
+%     % Fit
+%     options = optimset('Display','off');
+% 
+%     fitParams = fminsearch(objective,start,options);
+% 
+%     % if output.exitflag < 1
+%     %     msg = sprintf('Fitting of double gauß for energy %g and slice %g at depth %g mm stopped with exitflag %g', params.energy, i, zdepth(i), output.exitflag);
+%     %     msg = [msg,' Error Message : ', output2.message, '\n'];
+%     %     msg = convertCharsToStrings(msg);
+%     %     warning(msg);
+%     % end
+% 
+%     [sigma(i,:), ixSortedSigma] = sort(fitParams);
+% 
+%     if visBool && ((i==1) || (mod(i,25) == 0))
+%         figure()
+%         sgtitle(convertCharsToStrings(sprintf('Energy %g MeV/u at depths %g mm', params.energy, zdepth(i))))
+% 
+% 
+%         subplot(1,2,1)
+%         plot(rdepth, profile, '.')
+%         hold on
+%         plot(rdepth, gauss1(fitParams, rdepth))
+%         xlabel('Lateral Depth [mm]')
+%         ylabel('Profile [MeV /mm^3]')
+%         title('Gauss1 Fit')
+% 
+%         subplot(1,2,2)
+%         semilogy(rdepth, profile, '.')
+%         hold on
+%         semilogy(rdepth, gauss1(fitParams, rdepth))
+%         xlabel('Lateral Depth [mm]')
+%         ylabel('Profile [MeV /mm^3]')
+%         title('Gauss1 Fit')
+% 
+%         fprintf('Done with Energy %g MeV/u at depths %g mm \n', params.energy, zdepth(i))
+%     end
+% 
+% 
+% end
+
 % Fitting Functions
-gauss1       = @(p,x) 1./(2*pi*p.^2) * exp(-x.^2./(2*p.^2));
-gauss2       = @(w1, p1, p2, x) (1-w1) * gauss1(p1,x) + w1 * gauss1(p2,x);
-gauss3       = @(w1, w2, p1, p2, p3, x) (1-w1-w2) * gauss1(p1,x) + w1 * gauss1(p2,x) + w2*gauss1(p3,x);
-objFunc    = fittype(gauss2);
-objFuncSpec = fittype(gauss3);
+gauss1 = @(p,x) 1./(2*pi*p.^2) * exp(-x.^2./(2*p.^2));
 
+options = optimset('Display','off');
+lambda  = 5;   % Stärke der Kopplung an sigmaPrev
 
-for i = 1:N %max_ix+ixSigmaFit-1
-
+for i = 1:N
     % normaliseProfile
     profile = EnergyDepositedZR(i,:);
-    profile = profile / (sum(profile)); 
+    profile = profile / (sum(profile));
     profile = profile./scoringArea;
-   
-    
-   % double Gaußfit
-    start = [0.1, params.sigma0+1,  params.sigma0+5];
-    lb = [0.001, params.sigma0, params.sigma0];
-    ub = [1, params.sigma0+100 params.sigma0+100];
+
+    % Startwert: für die erste Tiefe params.sigma0, danach das Sigma der vorherigen Tiefe
+    if i == 1
+        sigmaPrev = params.sigma0;
+    else
+        sigmaPrev = sigma(i-1,1);
+    end
+
+    start = sigmaPrev + 1;
 
     weightFit = zeros(size(profile'));
     weightFit(profile>0) = 1./profile(profile>0);
 
+    % Weicher Regularisierungsterm statt harter Bounds:
+    % hält den Fit in der Nähe von sigmaPrev, ohne die asin/sin-Transformation
+    objective = @(p) sum(weightFit' .* (gauss1(p,rdepth) - profile).^2 ) ...
+                     + lambda * (p - sigmaPrev)^2;
 
-    [fitObject,gof,output] = fit(rdepth', profile', objFunc, ...
-        'Start', [start], 'Lower', [lb], 'Upper', [ub],  'Weight', weightFit);
+    fitParams = fminsearch(objective, start, options);
 
-    if output.exitflag < 1
-        msg = sprintf('Fitting of double gauß for energy %g and slice %g at depth %g mm stopped with exitflag %g', params.energy, i, zdepth(i), output.exitflag);
-        msg = [msg,' Error Message : ', output2.message, '\n'];
-        msg = convertCharsToStrings(msg);
-        warning(msg);
-    end
-
-    [sigma(i,:), ixSortedSigma] = sort([fitObject.p1, fitObject.p2]);
-    wTmp = [1-fitObject.w1,fitObject.w1];
-    wTmp = wTmp(ixSortedSigma(2:end));
-    if sum(wTmp) >= 1
-        warning('Wrong weights fited for energy %g and slice %g \n', params.energy, i);
-    end
-    weight(i) = wTmp;
+    [sigma(i,:), ixSortedSigma] = sort(fitParams);
 
     if visBool && ((i==1) || (mod(i,25) == 0))
         figure()
         sgtitle(convertCharsToStrings(sprintf('Energy %g MeV/u at depths %g mm', params.energy, zdepth(i))))
-       
-        
         subplot(1,2,1)
         plot(rdepth, profile, '.')
         hold on
-        plot(rdepth, gauss2(fitObject.w1,fitObject.p1, fitObject.p2, rdepth))
+        plot(rdepth, gauss1(fitParams, rdepth))
         xlabel('Lateral Depth [mm]')
         ylabel('Profile [MeV /mm^3]')
-        title('Gauss2 Fit')
-
+        title('Gauss1 Fit')
         subplot(1,2,2)
         semilogy(rdepth, profile, '.')
         hold on
-        semilogy(rdepth, gauss2(fitObject.w1,fitObject.p1, fitObject.p2, rdepth))
+        semilogy(rdepth, gauss1(fitParams, rdepth))
         xlabel('Lateral Depth [mm]')
         ylabel('Profile [MeV /mm^3]')
-        title('Gauss2 Fit')
-        
+        title('Gauss1 Fit')
         fprintf('Done with Energy %g MeV/u at depths %g mm \n', params.energy, zdepth(i))
     end
-    
-    
 end
-
-
 
 % only inlcude where sigma whas fited and correct for inital sigma, spot size
 zdepth  = zdepth; %(1:max_ix +ixSigmaFit-1);
 IDD     = IDD; %(1:max_ix +ixSigmaFit-1);
-weight = weight; %(1:max_ix +ixSigmaFit-1,:);
+
 %sigma  = sqrt(sigma(1:max_ix +ixSigmaFit-1,:).^2 - params.sigma0.^2);
 sigma = sqrt(sigma.^2 - params.sigma0.^2);
 
@@ -130,8 +176,8 @@ cf = 10;
 % Add 0 depth
 % interpolate sigma on depths of IDD
 IDD     = interp1(zdepth, IDD, [0,zdepth], 'linear', 'extrap')';
-weight = interp1(zdepth, weight, [0,zdepth], 'linear', 'extrap');
-sigma   = [[0,0];sigma];
+
+sigma   = [0;sigma];
 
 [XE,YZ] = meshgrid(Data_Fluence.energyBin,[0,zdepth]);
 [xe,yz] = meshgrid(Data_Fluence.energyBin,zdepth);
@@ -154,7 +200,7 @@ zdepth  = [0,zdepth];
 %% get rid of possible negative values thru interpolation
 IDD(IDD<0)          = 0;
 sigma(sigma<0)      = 0;
-weight(weight<0)    = 0;
+
 
 % save data in machine
 fitData.energy      = params.energy;
@@ -163,7 +209,7 @@ fitData.depths      = zdepth';
 fitData.Z           = IDD* cf;
 fitData.peakPos     = zdepth(max_ix+1); %zeroDepth added
 fitData.sigma       = sigma;
-fitData.weight      = weight;
+
 fitData.Fluence.energyBin = Data_Fluence.energyBin;
 fitData.Fluence.energyBinEl = Data_Fluence.energyBinEl;
 fitData.Fluence.spectra = Data_Fluence.spectra;

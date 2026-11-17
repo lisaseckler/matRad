@@ -170,8 +170,11 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
                 % Initialize alpha/beta cubes
                 resultGUI.(['alpha', RBE_model{j}, beamInfo(i).suffix])                 = zeros(dij.doseGrid.dimensions);
                 resultGUI.(['beta',  RBE_model{j}, beamInfo(i).suffix])                 = zeros(dij.doseGrid.dimensions);
+                resultGUI.(['zStar', RBE_model{j}, beamInfo(i).suffix])                    = zeros(dij.doseGrid.dimensions);
+
                 resultGUI.(['alphaDoseCube', RBE_model{j}, beamInfo(i).suffix])         = zeros(dij.doseGrid.dimensions);
                 resultGUI.(['SqrtBetaDoseCube',  RBE_model{j}, beamInfo(i).suffix])     = zeros(dij.doseGrid.dimensions);
+                resultGUI.(['zStarDoseCube', RBE_model{j}, beamInfo(i).suffix])         = zeros(dij.doseGrid.dimensions);
 
                 % Calculate alpha and weighted alphaDose
                 AlphaDoseCube                                                           = full(dij.(['mAlphaDose' RBE_model{j}]){scenNum} * wBeam);
@@ -182,6 +185,13 @@ elseif any(cellfun(@(teststr) ~isempty(strfind(lower(teststr),'alpha')), fieldna
                 SqrtBetaDoseCube                                                        = full(dij.(['mSqrtBetaDose' RBE_model{j}]){scenNum} * wBeam);
                 resultGUI.(['beta', RBE_model{j}, beamInfo(i).suffix])(ix)              = (SqrtBetaDoseCube(ix)./resultGUI.(['physicalDose', beamInfo(i).suffix])(ix)).^2;
                 resultGUI.(['SqrtBetaDoseCube', RBE_model{j}, beamInfo(i).suffix])(ix)  = SqrtBetaDoseCube(ix);
+
+                % Calculate zs and weighted zStarDose
+                if isfield(dij,'mZstarDose')
+                    zStarDoseCube                                                           = full(dij.(['mZstarDose' RBE_model{j}]){scenNum} * wBeam);
+                    resultGUI.(['zStar', RBE_model{j}, beamInfo(i).suffix])(ix)             = zStarDoseCube(ix)./resultGUI.(['physicalDose', beamInfo(i).suffix])(ix);
+                    resultGUI.(['zStarDoseCube', RBE_model{j}, beamInfo(i).suffix])(ix)     = zStarDoseCube(ix);
+                end
             end
         end
     end

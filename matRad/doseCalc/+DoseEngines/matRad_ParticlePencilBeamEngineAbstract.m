@@ -241,6 +241,7 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
             % LET
             if this.calcLET
                 X.LET = baseData.LET;
+
             end
 
             
@@ -560,7 +561,13 @@ classdef (Abstract) matRad_ParticlePencilBeamEngineAbstract < DoseEngines.matRad
 
         function dij = allocateBioDoseContainer(this,dij)
             % allocate space for container used in bio optimization
-            dij = this.allocateQuantityMatrixContainers(dij,{'mAlphaDose','mSqrtBetaDose'});
+            if ~isempty(this.bioModel.ZstarTable) && this.bioModel.calcLET
+                dij = this.allocateQuantityMatrixContainers(dij,{'mAlphaDose','mSqrtBetaDose','mZstarDose','mLETDose'});
+            elseif isempty(this.bioModel.ZstarTable) && this.bioModel.calcLET
+                dij = this.allocateQuantityMatrixContainers(dij,{'mAlphaDose','mSqrtBetaDose','mLETDose'});
+            else
+                dij = this.allocateQuantityMatrixContainers(dij,{'mAlphaDose','mSqrtBetaDose'});
+            end
 
             % This does not make sense here, works only for LQbased models (?)
             % TODO: move it from here

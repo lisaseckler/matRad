@@ -16,13 +16,13 @@ machine = struct;
 
 machine.meta = struct;
 machine.meta.radiationMode = 'carbon';
-machine.meta.dataType = 'multipleGauss';
+machine.meta.dataType = 'singleGauss';
 machine.meta.created_on = date;
 machine.meta.created_by = 'matRad Team';
 machine.meta.description = 'carbon beamdata for HIT machine, simulated with TOPAS';
 machine.meta.SAD = machine_Carbon.machine.meta.SAD;
 machine.meta.BAMStoIsoDist = machine_Carbon.machine.meta.BAMStoIsoDist;
-machine.meta.machine = 'HITfluenceSpectra_updatedBig';
+machine.meta.machine = 'HITfluenceSpectra_updatedBig_singleGaussianFit_v2';
 machine.meta.LUTspotSize = machine_Carbon.machine.meta.LUT_bxWidthminFWHM;
 
 machine.data = struct;
@@ -83,17 +83,17 @@ for i = 1:numel(E)
     [Data_Dose, Data_Fluence, Zdepths, rlengths, scoringArea]  = combineScoringVolumes(Data_Dose, Data_Fluence, params, approxRange(i));
 
     % TODO fluence fit + readin
-    % fitData = fitCarbonBasedata(Data_Dose.ED, Data_Fluence,params, Zdepths, rlengths, scoringArea, visBool);
-    % machine.data(i).range                   = fitData.range;
-    % machine.data(i).energy                  = fitData.energy;
-    % machine.data(i).depths                  = fitData.depths;
-    % machine.data(i).Z                       = fitData.Z;
-    % machine.data(i).peakPos                 = fitData.peakPos;
-    % machine.data(i).sigmaMulti                   = fitData.sigma;
-    % machine.data(i).weightMulti                  = fitData.weight';
-    % machine.data(i).offset                  = 0; 
-    % machine.data(i).BeamOpticsSimulated     = params.BeamOptics;
-    % machine.data(i).Fluence                 = fitData.Fluence;
+    fitData = fitCarbonBasedata(Data_Dose.ED, Data_Fluence,params, Zdepths, rlengths, scoringArea, visBool);
+    machine.data(i).range                   = fitData.range;
+    machine.data(i).energy                  = fitData.energy;
+    machine.data(i).depths                  = fitData.depths;
+    machine.data(i).Z                       = fitData.Z;
+    machine.data(i).peakPos                 = fitData.peakPos;
+    machine.data(i).sigma                   = fitData.sigma;
+    %machine.data(i).weight                  = fitData.weight';
+    machine.data(i).offset                  = 0; 
+    machine.data(i).BeamOpticsSimulated     = params.BeamOptics;
+    machine.data(i).Fluence                 = fitData.Fluence;
 
 
     % TODO
@@ -115,5 +115,5 @@ end
 
 
 %% Save machine Data
-save('carbon_HITfluenceSpectra_updatedBig.mat', 'machine', '-v7.3')
+save('carbon_HITfluenceSpectra_updatedBig_singleGaussianFit.mat', 'machine', '-v7.3')
 disp('Saving Done')

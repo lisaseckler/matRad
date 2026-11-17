@@ -1,6 +1,6 @@
 f = figure('WindowState','maximized');
 
-%HIT = machine;
+HIT = machine;
 
 blue = [0.35 0.7 0.9];
 orange = [0.9,0.6,0];
@@ -35,7 +35,7 @@ for i = vois
 end
 
 %MCF = machine;
-x = MCF.data(72).depths;
+x = MCF.data(71).depths;
 
 for i = [1 4 5 6 7 8]
     fluenceMCF = sum(MCF.data(72).Fluence.spectra(i).fluenceSpectrum,1);
@@ -64,7 +64,7 @@ legend ([leg{:}],names )
 %% Normalisation
 
 NormFactor = [];
-%newMCF = machine;
+MCF = machine;
 
 for i = 1:166
     sumFluence = sum(MCF.data(i).Fluence.spectra(8).fluenceSpectrum,1);
@@ -79,10 +79,10 @@ for i = 1:166
 end
 
 %% saving
-MCF.meta.machine = 'MCF_latestVersion_correctedFluence_Americans2';
+%MCF.meta.machine = 'MCF_latestVersion_correctedFluence_Americans2';
 machine = MCF;
 
-save("carbon_MCF_latestVersion_correctedFluence_Americans2.mat","machine")
+save("carbon_MCF_doubleGaussian_RidgeFilter.mat","machine")
 
 %% setting the first energyBins from MCF to the ones from HIT
 

@@ -16,7 +16,7 @@ cst{2,6}{1} = struct(DoseObjectives.matRad_SquaredOverdosing(100,30));
 
 %%
 % angle 270
-modelForComparison = ["LEMI","mMKM","aMCFMKM","MCFMKM"];
+modelForComparison = ["LEMI","mMKM","MCFMKM"];
 
 for i = 1:size(modelForComparison,2)
     cst_models.(modelForComparison(i)) = cst;
@@ -46,7 +46,7 @@ end
 for j = 1: numel(fn)
 
     pln.(fn{j}).radiationMode = 'carbon';
-    pln.(fn{j}).machine       = 'MCF_Fluence_updated_withoutRBE_singleNewSigma';
+    pln.(fn{j}).machine       = 'MCF_doubleGauss_ridgeFilter_sigmaAveraged';
     pln.(fn{j}).propDoseCalc.calcLET = 0;
 
     pln.(fn{j}).numOfFractions       = 30;
@@ -133,7 +133,7 @@ end
 
 %% Dose calculation
 
-dij.MCFMKM = matRad_calcDoseInfluence(ct,cst_models.(fn{4}),stf.(fn{4}),pln.(fn{4}));
+dij.LEMI = matRad_calcDoseInfluence(ct,cst_models.(fn{1}),stf.(fn{1}),pln.(fn{1}));
 
 
 %% Optimization

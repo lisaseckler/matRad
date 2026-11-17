@@ -1935,7 +1935,7 @@ classdef matRad_TopasMCEngine < DoseEngines.matRad_MonteCarloEngineAbstract
                         matRad_cfg.dispInfo('Beam energy spectrum available\n');
                         energySpectrum = [baseData.machine.data(:).energySpectrum];
                         
-                        if strcmp(energySpectrum.type, 'histogram')
+                        if strcmp(energySpectrum(1).type, 'histogram')
                             nbSpectrumPoints = length(energySpectrum(1).energy_MeVpN);
 
                             % Get energy indices of the current energies in the baseData
